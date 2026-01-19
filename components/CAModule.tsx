@@ -1,6 +1,10 @@
 import React from 'react';
-import { ModuleTab, ActivityCategory, CAType } from '../types';
-import { Database, Settings, BookOpen, Activity, Zap } from 'lucide-react';
+import { ActivityCategory, ModuleTab, CAType } from '../types';
+import { 
+  BarChart3, Settings2, BookOpenCheck, 
+  Database, LayoutTemplate, ClipboardList,
+  Sparkles, ArrowRight
+} from 'lucide-react';
 
 interface Props {
   activity: string;
@@ -9,155 +13,133 @@ interface Props {
   onTabChange: (tab: ModuleTab) => void;
 }
 
-// Thèmes visuels "Pastel Vif"
-const CA_THEMES: Record<CAType, { gradient: string; accent: string; shadow: string; border: string }> = {
-  'CA1': { gradient: 'from-blue-500 to-indigo-600', accent: 'text-indigo-600', shadow: 'shadow-indigo-200', border: 'border-indigo-100' },
-  'CA2': { gradient: 'from-emerald-400 to-teal-600', accent: 'text-emerald-600', shadow: 'shadow-emerald-200', border: 'border-emerald-100' },
-  'CA3': { gradient: 'from-fuchsia-500 to-purple-600', accent: 'text-fuchsia-600', shadow: 'shadow-fuchsia-200', border: 'border-fuchsia-100' },
-  'CA4': { gradient: 'from-orange-400 to-rose-500', accent: 'text-rose-600', shadow: 'shadow-rose-200', border: 'border-rose-100' },
-  'CA5': { gradient: 'from-amber-400 to-orange-500', accent: 'text-amber-600', shadow: 'shadow-amber-200', border: 'border-amber-100' }
+// Configuration des Thèmes Visuels (Gradients & Accents)
+const THEMES: Record<CAType, { bg: string; text: string; light: string; border: string }> = {
+  'CA1': { bg: 'bg-cyan-500', text: 'text-cyan-600', light: 'bg-cyan-50', border: 'border-cyan-200' },
+  'CA2': { bg: 'bg-emerald-500', text: 'text-emerald-600', light: 'bg-emerald-50', border: 'border-emerald-200' },
+  'CA3': { bg: 'bg-fuchsia-500', text: 'text-fuchsia-600', light: 'bg-fuchsia-50', border: 'border-fuchsia-200' },
+  'CA4': { bg: 'bg-orange-500', text: 'text-orange-600', light: 'bg-orange-50', border: 'border-orange-200' },
+  'CA5': { bg: 'bg-rose-500', text: 'text-rose-600', light: 'bg-rose-50', border: 'border-rose-200' }
 };
 
 export const CAModule: React.FC<Props> = ({ activity, ca, activeTab, onTabChange }) => {
-  
-  const theme = CA_THEMES[ca.id] || CA_THEMES['CA1'];
+  const theme = THEMES[ca.id] || THEMES['CA1'];
 
+  // Définition des Onglets
   const tabs = [
-    { id: 'DATA', label: 'Données & Analyse', icon: Database },
-    { id: 'CONFIG', label: 'Configuration', icon: Settings },
-    { id: 'SESSION', label: 'Fiche Séance', icon: BookOpen },
+    { id: 'DATA', label: 'Import & Analyse', icon: BarChart3 },
+    { id: 'CONFIG', label: 'Fiche Observation', icon: Settings2 },
+    { id: 'SESSION', label: 'Fiche Séance', icon: BookOpenCheck },
   ] as const;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full relative overflow-hidden bg-slate-50/30">
       
-      {/* 1. HERO HEADER (Flottant) */}
-      <header className="px-8 pt-8 pb-6 flex-none z-10">
-        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8">
-            
-            {/* Titre & Info */}
-            <div className="flex items-center gap-6">
-               <div className={`
-                    w-24 h-24 rounded-[2rem] bg-gradient-to-br ${theme.gradient} 
-                    flex items-center justify-center text-white shadow-2xl ${theme.shadow} 
-                    transform transition-transform hover:scale-105 duration-300
-               `}>
-                  <Activity size={44} strokeWidth={1.5} />
-               </div>
-               
-               <div>
-                  <div className={`
-                      inline-flex items-center gap-2 px-4 py-1.5 rounded-full 
-                      bg-white border ${theme.border} text-xs font-bold uppercase tracking-wider mb-3 shadow-sm
-                      ${theme.accent}
-                  `}>
-                    <Zap size={14} fill="currentColor" /> {ca.label}
-                  </div>
-                  <h1 className="text-5xl font-extrabold text-slate-900 tracking-tight leading-none">
-                    {activity}
-                  </h1>
-               </div>
+      {/* 1. HEADER (Titre + Tabs) */}
+      <header className="px-10 pt-10 pb-6 shrink-0 z-20">
+        <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-8">
+          
+          {/* Titre Sport */}
+          <div>
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${theme.border} ${theme.light} mb-4`}>
+              <span className={`w-2 h-2 rounded-full ${theme.bg} animate-pulse`}></span>
+              <span className={`text-xs font-bold uppercase tracking-widest ${theme.text}`}>{ca.label}</span>
             </div>
+            <h1 className="text-5xl font-black text-slate-900 tracking-tight leading-none">
+              {activity}
+            </h1>
+          </div>
 
-            {/* 2. PILL TABS SELECTOR (Style iOS Segmented Control) */}
-            <nav className="bg-slate-200/50 p-1.5 rounded-full flex gap-1 shadow-inner max-w-full overflow-x-auto">
-              {tabs.map((tab) => {
-                const isActive = activeTab === tab.id;
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => onTabChange(tab.id as ModuleTab)}
-                    className={`
-                      relative flex items-center gap-2.5 px-6 py-3 rounded-full text-sm font-bold transition-all duration-300
-                      ${isActive 
-                        ? 'bg-white text-slate-900 shadow-lg shadow-slate-200/50 scale-100' 
-                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-                      }
-                    `}
-                  >
-                    <Icon size={18} className={isActive ? theme.accent : 'text-slate-400'} strokeWidth={2.5} />
-                    <span className="whitespace-nowrap">{tab.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
+          {/* Segmented Control (Tabs) */}
+          <nav className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200/60 inline-flex">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id as ModuleTab)}
+                  className={`
+                    flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-bold transition-all duration-300
+                    ${isActive 
+                      ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 scale-100' 
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                    }
+                  `}
+                >
+                  <Icon size={18} strokeWidth={2.5} className={isActive ? 'text-white' : 'text-slate-400'} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
       </header>
 
-      {/* 3. BENTO CONTENT AREA */}
-      <main className="flex-1 overflow-y-auto px-8 pb-8 pt-2 scrollbar-thin scrollbar-thumb-slate-300">
-        
-        {/* VIEW 1: DATA & ANALYSIS */}
-        {activeTab === 'DATA' && (
-          <div className="max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-2 gap-8 animate-fade-in-up">
-            
-            {/* Main Bento Card */}
-            <div className="xl:col-span-2 bg-white rounded-[2.5rem] p-12 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)] border-none text-center flex flex-col items-center justify-center min-h-[500px] relative overflow-hidden">
-               {/* Decorative Background Blob */}
-               <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gradient-to-b ${theme.gradient} opacity-[0.03] rounded-full blur-3xl pointer-events-none`}></div>
+      {/* 2. MAIN CONTENT (Placeholders) */}
+      <div className="flex-1 px-10 pb-10 overflow-hidden">
+        <div className="h-full w-full bg-white rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden flex flex-col items-center justify-center p-8 group">
+           
+           {/* Decor: Background Blob */}
+           <div className={`
+              absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
+              w-[600px] h-[600px] ${theme.bg} opacity-[0.03] rounded-full blur-[120px] 
+              pointer-events-none transition-all duration-1000 group-hover:opacity-[0.05]
+           `}></div>
 
-               <div className={`w-24 h-24 rounded-3xl bg-slate-50 flex items-center justify-center mb-8 text-slate-400 shadow-inner`}>
-                  <Database size={48} strokeWidth={1.5} />
+           {/* --- TAB 1: DATA --- */}
+           {activeTab === 'DATA' && (
+             <div className="text-center max-w-md relative z-10 animate-enter">
+               <div className="w-24 h-24 mx-auto bg-slate-50 rounded-[1.5rem] flex items-center justify-center mb-6 shadow-inner text-slate-300">
+                 <Database size={40} strokeWidth={1.5} />
                </div>
-               
-               <h3 className="text-3xl font-extrabold text-slate-900 mb-4 relative z-10">
-                   Espace Données
-               </h3>
-               
-               <p className="text-slate-500 text-lg max-w-xl mx-auto mb-10 leading-relaxed relative z-10">
-                 Importez vos fichiers CSV pour générer automatiquement les tableaux de bord de suivi et d'analyse pour <span className={`font-bold ${theme.accent}`}>{activity}</span>.
+               <h2 className="text-2xl font-bold text-slate-900 mb-3">Données & Analyse</h2>
+               <p className="text-slate-500 leading-relaxed mb-8">
+                 Importez vos fichiers CSV élèves ou résultats. Le système générera automatiquement les indicateurs de réussite.
                </p>
-               
-               <button className={`
-                    px-10 py-5 rounded-2xl font-bold text-white shadow-xl transition-all duration-300 active:scale-95 flex items-center gap-3 text-lg
-                    bg-gradient-to-r ${theme.gradient} hover:shadow-2xl hover:-translate-y-1
-               `}>
-                 <Database size={24} /> Importer un fichier CSV
+               <button className="px-6 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-900 shadow-lg shadow-slate-100 hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 mx-auto">
+                 <Sparkles size={18} className="text-amber-500" />
+                 Connecter une source de données
                </button>
-            </div>
-          </div>
-        )}
+             </div>
+           )}
 
-        {/* VIEW 2: CONFIGURATION */}
-        {activeTab === 'CONFIG' && (
-          <div className="max-w-[1200px] mx-auto animate-fade-in-up">
-             <div className="bg-white rounded-[2.5rem] p-16 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)] border-none text-center relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-12 opacity-5">
-                   <Settings size={200} />
+           {/* --- TAB 2: CONFIG --- */}
+           {activeTab === 'CONFIG' && (
+             <div className="text-center max-w-md relative z-10 animate-enter">
+               <div className="w-24 h-24 mx-auto bg-slate-50 rounded-[1.5rem] flex items-center justify-center mb-6 shadow-inner text-slate-300">
+                 <LayoutTemplate size={40} strokeWidth={1.5} />
                </div>
-
-               <div className="w-24 h-24 rounded-3xl bg-slate-50 flex items-center justify-center mx-auto mb-8 text-slate-400 shadow-inner">
-                  <Settings size={48} strokeWidth={1.5} />
-               </div>
-               <h3 className="text-3xl font-extrabold text-slate-900 mb-4">Configuration des Observables</h3>
-               <p className="text-slate-500 text-lg max-w-2xl mx-auto">
-                 Personnalisez les indicateurs de réussite. Créez des boutons, des compteurs ou des chronomètres adaptés à votre situation d'apprentissage.
+               <h2 className="text-2xl font-bold text-slate-900 mb-3">Fiche d'Observation</h2>
+               <p className="text-slate-500 leading-relaxed mb-8">
+                 Configurez l'interface élève : Boutons, Chronomètres, Compteurs et zones de saisie pour <span className="font-semibold">{activity}</span>.
                </p>
-            </div>
-          </div>
-        )}
+               <button className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-900/20 hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 mx-auto">
+                 Ajouter un observable
+                 <ArrowRight size={18} />
+               </button>
+             </div>
+           )}
 
-        {/* VIEW 3: SESSION PLANNER */}
-        {activeTab === 'SESSION' && (
-           <div className="max-w-[1200px] mx-auto animate-fade-in-up">
-             <div className="bg-white rounded-[2.5rem] p-16 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.05)] border-none text-center relative overflow-hidden">
-               <div className="absolute -left-10 bottom-0 p-12 opacity-5">
-                   <BookOpen size={200} />
+           {/* --- TAB 3: SESSION --- */}
+           {activeTab === 'SESSION' && (
+             <div className="text-center max-w-md relative z-10 animate-enter">
+               <div className="w-24 h-24 mx-auto bg-slate-50 rounded-[1.5rem] flex items-center justify-center mb-6 shadow-inner text-slate-300">
+                 <ClipboardList size={40} strokeWidth={1.5} />
                </div>
-
-               <div className="w-24 h-24 rounded-3xl bg-slate-50 flex items-center justify-center mx-auto mb-8 text-slate-400 shadow-inner">
-                  <BookOpen size={48} strokeWidth={1.5} />
-               </div>
-               <h3 className="text-3xl font-extrabold text-slate-900 mb-4">Scénario Pédagogique</h3>
-               <p className="text-slate-500 text-lg max-w-2xl mx-auto">
-                 Structurez votre leçon. Définissez le timing, les consignes de sécurité, le matériel et les variables didactiques pour chaque phase.
+               <h2 className="text-2xl font-bold text-slate-900 mb-3">Fiche de Séance</h2>
+               <p className="text-slate-500 leading-relaxed mb-8">
+                 Planifiez le scénario pédagogique : Chronologie, Consignes de sécurité, Matériel et Variables didactiques.
                </p>
-            </div>
-          </div>
-        )}
+               <button className="px-6 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-900 shadow-lg shadow-slate-100 hover:shadow-xl hover:scale-105 active:scale-95 transition-all mx-auto">
+                 Créer une nouvelle séquence
+               </button>
+             </div>
+           )}
 
-      </main>
+        </div>
+      </div>
+
     </div>
   );
 };

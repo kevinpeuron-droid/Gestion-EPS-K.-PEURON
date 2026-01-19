@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Timer, Compass, Music, Swords, HeartPulse, 
-  ChevronDown, ChevronRight,
-  PanelLeftClose, PanelLeftOpen, Activity
+  Activity, ChevronRight, PanelLeftClose, PanelLeftOpen, 
+  Settings, UserCircle, LogOut
 } from 'lucide-react';
 import { ActivityCategory } from '../types';
 
@@ -19,118 +19,149 @@ const IconMap: Record<string, React.ElementType> = {
 };
 
 export const Sidebar: React.FC<Props> = ({ 
-  caDefinitions,
+  caDefinitions, 
   currentActivity, 
   onSelectActivity, 
   isCollapsed,
-  onToggleCollapse
+  onToggleCollapse 
 }) => {
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
-    const activeCA = caDefinitions.find(ca => ca.activities.includes(currentActivity));
-    return activeCA ? { [activeCA.id]: true } : {};
+  const [expandedCA, setExpandedCA] = useState<string | null>(() => {
+    const found = caDefinitions.find(ca => ca.activities.includes(currentActivity));
+    return found ? found.id : null;
   });
 
-  const toggleSection = (id: string) => {
-    setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
+  const handleToggleCA = (caId: string) => {
+    if (isCollapsed) return;
+    setExpandedCA(prev => prev === caId ? null : caId);
   };
 
   return (
-    <aside className={`${isCollapsed ? 'w-24' : 'w-80'} bg-white text-slate-600 flex flex-col shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] z-50 transition-all duration-300 ease-in-out border-r border-slate-100`}>
-      
-      {/* Brand Header */}
-      <div className={`h-28 flex items-center ${isCollapsed ? 'justify-center' : 'px-8'} border-b border-slate-50`}>
-        <div className="flex items-center gap-4 group cursor-default">
-           <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-200 transition-transform group-hover:scale-105 duration-300">
-              <Activity size={24} strokeWidth={2.5} />
-           </div>
-           {!isCollapsed && (
-             <div>
-               <h1 className="font-extrabold text-slate-900 text-xl tracking-tight leading-none">Observ'EPS</h1>
-               <span className="text-[11px] uppercase font-bold text-indigo-500 tracking-wider">Pro Edition</span>
-             </div>
-           )}
-        </div>
-      </div>
+    <aside 
+      className={`
+        ${isCollapsed ? 'w-24' : 'w-[320px]'} 
+        h-full flex flex-col py-6 px-4 z-50 transition-all duration-500 ease-in-out shrink-0
+      `}
+    >
+      {/* Container "Glass Dark" */}
+      <div className="flex-1 flex flex-col bg-[#0F172A] rounded-[2rem] shadow-2xl shadow-slate-900/20 border border-slate-800 overflow-hidden relative">
+        
+        {/* Glow interne */}
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent opacity-50" />
 
-      {/* Navigation Scrollable */}
-      <div className="flex-1 overflow-y-auto py-8 space-y-6 px-5 scrollbar-thin scrollbar-thumb-slate-200">
-         
-         {!isCollapsed && <div className="px-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Activités</div>}
-
-         {caDefinitions.map(ca => {
-            const Icon = IconMap[ca.iconName] || Activity;
-            const isOpen = openSections[ca.id];
-            const isContextActive = ca.activities.includes(currentActivity);
-
-            // Couleur active dynamique selon le CA (pour le texte/icones)
-            const activeColorClass = isContextActive ? ca.color : 'text-slate-500';
-            const activeBgClass = isContextActive ? ca.bgColor : 'group-hover:bg-slate-50';
-
-            return (
-              <div key={ca.id} className="group/section">
-                 {/* Main CA Button */}
-                 <button 
-                    onClick={() => !isCollapsed && toggleSection(ca.id)}
-                    className={`
-                        w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-4'} py-4 rounded-2xl transition-all duration-300
-                        ${isContextActive && !isCollapsed ? 'bg-slate-50 shadow-sm' : 'hover:bg-slate-50'}
-                    `}
-                 >
-                    <div className="flex items-center gap-4">
-                       <div className={`
-                            w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300
-                            ${isContextActive ? 'bg-white shadow-sm scale-110' : 'bg-slate-100 text-slate-400 group-hover/section:bg-white group-hover/section:text-slate-600'}
-                       `}>
-                            <Icon size={20} className={isContextActive ? ca.color : ''} />
-                       </div>
-                       
-                       {!isCollapsed && (
-                           <span className={`font-bold text-[15px] ${isContextActive ? 'text-slate-900' : 'text-slate-500'}`}>
-                               {ca.shortLabel}
-                           </span>
-                       )}
-                    </div>
-                    
-                    {!isCollapsed && (
-                       <span className={`transition-transform duration-300 text-slate-400 ${isOpen ? 'rotate-180' : ''}`}>
-                         <ChevronDown size={18} strokeWidth={2.5} />
-                       </span>
-                    )}
-                 </button>
-
-                 {/* Sub-menu (Activities) */}
-                 {!isCollapsed && isOpen && (
-                    <div className="mt-2 ml-4 space-y-1 border-l-2 border-slate-100 pl-4 py-1">
-                       {ca.activities.map(act => (
-                          <button
-                            key={act}
-                            onClick={() => onSelectActivity(act)}
-                            className={`
-                                relative block w-full text-left text-[14px] py-3 px-4 rounded-xl transition-all duration-200 font-medium
-                                ${currentActivity === act 
-                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
-                                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                                }
-                            `}
-                          >
-                            {act}
-                          </button>
-                       ))}
-                    </div>
-                 )}
+        {/* --- HEADER --- */}
+        <div className={`h-24 flex items-center ${isCollapsed ? 'justify-center' : 'px-8'} shrink-0`}>
+          <div className="flex items-center gap-4">
+            <div className="relative group cursor-pointer">
+              <div className="absolute inset-0 bg-indigo-500 rounded-xl blur opacity-40 group-hover:opacity-60 transition-opacity" />
+              <div className="relative w-11 h-11 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center text-white shadow-inner border border-white/10">
+                <Activity size={22} strokeWidth={3} />
               </div>
-            )
-         })}
-      </div>
+            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col animate-enter">
+                <h1 className="text-white font-bold text-lg tracking-tight leading-tight">Observ'EPS</h1>
+                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Workspace</span>
+              </div>
+            )}
+          </div>
+        </div>
 
-      {/* Footer / Collapse */}
-      <div className="p-6 border-t border-slate-50">
-        <button 
-          onClick={onToggleCollapse} 
-          className="w-full flex items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all duration-200 active:scale-95"
-        >
-            {isCollapsed ? <PanelLeftOpen size={20}/> : <PanelLeftClose size={20}/>}
-        </button>
+        {/* --- NAVIGATION --- */}
+        <div className="flex-1 overflow-y-auto px-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700/50">
+          
+          {/* Section CA */}
+          <div className="space-y-1">
+            {!isCollapsed && <div className="px-4 mb-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Champs d'Apprentissage</div>}
+            
+            {caDefinitions.map((ca) => {
+              const Icon = IconMap[ca.iconName] || Activity;
+              const isExpanded = expandedCA === ca.id;
+              const isActiveContext = ca.activities.includes(currentActivity);
+
+              return (
+                <div key={ca.id} className="group">
+                  <button
+                    onClick={() => handleToggleCA(ca.id)}
+                    className={`
+                      w-full relative flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-4'} py-3.5 rounded-2xl transition-all duration-300
+                      ${isActiveContext ? 'bg-white/10 text-white shadow-lg shadow-black/20' : 'hover:bg-white/5 text-slate-400 hover:text-slate-200'}
+                    `}
+                  >
+                    {/* Active Indicator Bar */}
+                    {isActiveContext && !isCollapsed && (
+                      <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full ${ca.bgColor.replace('bg-', 'bg-')}`} />
+                    )}
+
+                    <div className="flex items-center gap-4">
+                      <Icon 
+                        size={22} 
+                        className={`transition-colors duration-300 ${isActiveContext ? ca.color : 'text-slate-500 group-hover:text-slate-300'}`} 
+                        strokeWidth={isActiveContext ? 2.5 : 2}
+                      />
+                      {!isCollapsed && <span className="font-semibold text-[15px] tracking-tight">{ca.shortLabel}</span>}
+                    </div>
+                  </button>
+
+                  {/* Sub-menu (Accordion) */}
+                  {!isCollapsed && (
+                    <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-2 mb-4' : 'grid-rows-[0fr] opacity-0'}`}>
+                      <div className="overflow-hidden">
+                        <div className="space-y-1 pl-4 border-l-2 border-slate-800 ml-4">
+                          {ca.activities.map(act => (
+                            <button
+                              key={act}
+                              onClick={() => onSelectActivity(act)}
+                              className={`
+                                w-full text-left text-[13px] py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-between group/item
+                                ${currentActivity === act 
+                                  ? 'text-white font-semibold bg-white/5' 
+                                  : 'text-slate-500 hover:text-slate-300'
+                                }
+                              `}
+                            >
+                              {act}
+                              {currentActivity === act && <ChevronRight size={14} className="text-indigo-400" />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* --- FOOTER (User Profile) --- */}
+        <div className="p-4 mt-auto border-t border-slate-800 bg-[#0B1120]">
+          {!isCollapsed ? (
+            <div className="flex items-center justify-between animate-enter">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center border border-slate-500/50">
+                  <UserCircle size={20} className="text-slate-300" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-white">Prof. EPS</div>
+                  <div className="text-[10px] text-slate-500">Lycée Jean Jaurès</div>
+                </div>
+              </div>
+              <button 
+                onClick={onToggleCollapse}
+                className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition"
+              >
+                <PanelLeftClose size={18} />
+              </button>
+            </div>
+          ) : (
+             <button 
+                onClick={onToggleCollapse}
+                className="w-full flex justify-center p-2 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition"
+              >
+                <PanelLeftOpen size={20} />
+              </button>
+          )}
+        </div>
       </div>
     </aside>
   );

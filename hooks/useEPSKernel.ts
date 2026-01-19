@@ -1,48 +1,84 @@
 import { useState, useMemo } from 'react';
-import { ActivityCategory, CAType, ModuleTab } from '../types';
+import { ActivityCategory, ModuleTab } from '../types';
 
-// Configuration statique des CA (Architecture de données)
+// --- CONFIGURATION STATIQUE (Données Immuables) ---
 export const CA_DEFINITIONS: ActivityCategory[] = [
-  { id: 'CA1', label: 'CA1 : Performance', shortLabel: 'Perf.', iconName: 'Timer', color: 'text-blue-600', bgColor: 'bg-blue-50', activities: ['Demi-fond', 'Natation', 'Vitesse'] },
-  { id: 'CA2', label: 'CA2 : Adaptation', shortLabel: 'Nature', iconName: 'Compass', color: 'text-emerald-600', bgColor: 'bg-emerald-50', activities: ['Course Orientation', 'Escalade'] },
-  { id: 'CA3', label: 'CA3 : Artistique', shortLabel: 'Arts', iconName: 'Music', color: 'text-purple-600', bgColor: 'bg-purple-50', activities: ['Danse', 'Acrosport'] },
-  { id: 'CA4', label: 'CA4 : Opposition', shortLabel: 'Duel', iconName: 'Swords', color: 'text-red-600', bgColor: 'bg-red-50', activities: ['Badminton', 'Basket-ball', 'Volley'] },
-  { id: 'CA5', label: 'CA5 : Entretien', shortLabel: 'Forme', iconName: 'HeartPulse', color: 'text-orange-600', bgColor: 'bg-orange-50', activities: ['Musculation', 'Step'] }
+  { 
+    id: 'CA1', 
+    label: 'Performance', 
+    shortLabel: 'Perf', 
+    iconName: 'Timer', 
+    color: 'text-cyan-500', 
+    bgColor: 'bg-cyan-500', 
+    activities: ['Demi-fond', 'Natation', 'Vitesse', 'Musculation'] 
+  },
+  { 
+    id: 'CA2', 
+    label: 'Adaptation', 
+    shortLabel: 'Nature', 
+    iconName: 'Compass', 
+    color: 'text-emerald-500', 
+    bgColor: 'bg-emerald-500', 
+    activities: ['Course Orientation', 'Escalade', 'Savoir Nager'] 
+  },
+  { 
+    id: 'CA3', 
+    label: 'Artistique', 
+    shortLabel: 'Arts', 
+    iconName: 'Music', 
+    color: 'text-fuchsia-500', 
+    bgColor: 'bg-fuchsia-500', 
+    activities: ['Danse', 'Acrosport', 'Cirque'] 
+  },
+  { 
+    id: 'CA4', 
+    label: 'Opposition', 
+    shortLabel: 'Duel', 
+    iconName: 'Swords', 
+    color: 'text-orange-500', 
+    bgColor: 'bg-orange-500', 
+    activities: ['Badminton', 'Tennis de Table', 'Volley-ball', 'Boxe'] 
+  },
+  { 
+    id: 'CA5', 
+    label: 'Entretien', 
+    shortLabel: 'Forme', 
+    iconName: 'HeartPulse', 
+    color: 'text-rose-500', 
+    bgColor: 'bg-rose-500', 
+    activities: ['Step', 'Yoga', 'Course en Durée'] 
+  }
 ];
 
 export const useEPSKernel = () => {
-  // 1. État de Navigation (Persistant au rechargement simple)
-  const [currentActivity, setCurrentActivity] = useState<string>(() => localStorage.getItem('eps_last_activity') || 'Demi-fond');
+  // --- STATE ---
+  // Persistance basique dans le localStorage pour le confort (F5)
+  const [currentActivity, setCurrentActivity] = useState<string>(() => localStorage.getItem('eps_activity') || 'Demi-fond');
   const [activeTab, setActiveTab] = useState<ModuleTab>('DATA');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // 2. Déduction automatique du CA
+  // --- COMPUTED ---
   const currentCA = useMemo(() => {
-    const found = CA_DEFINITIONS.find(ca => ca.activities.includes(currentActivity));
-    return found || CA_DEFINITIONS[0];
+    return CA_DEFINITIONS.find(ca => ca.activities.includes(currentActivity)) || CA_DEFINITIONS[0];
   }, [currentActivity]);
 
-  // 3. Actions
+  // --- ACTIONS ---
   const selectActivity = (activity: string) => {
     setCurrentActivity(activity);
-    localStorage.setItem('eps_last_activity', activity);
-    // On peut imaginer reset l'onglet ou garder le même
-    setActiveTab('DATA'); 
+    localStorage.setItem('eps_activity', activity);
+    setActiveTab('DATA'); // Reset on activity change
   };
 
-  const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
+  const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
 
   return {
-    // State
+    caDefinitions: CA_DEFINITIONS,
     currentActivity,
     currentCA,
     activeTab,
-    isSidebarCollapsed,
-    caDefinitions: CA_DEFINITIONS,
-
-    // Setters
-    setActiveTab,
+    setTab: setActiveTab,
     selectActivity,
+    isSidebarCollapsed,
     toggleSidebar
   };
 };
