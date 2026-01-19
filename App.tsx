@@ -14,14 +14,15 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
-  // Initialisation du noyau
   const kernel = useEPSKernel('session-persist-1');
 
-  // BARRIÈRE DE SÉCURITÉ : Si le kernel n'est pas prêt, on attend.
+  // --- BARRIÈRE DE SÉCURITÉ ---
+  // Empêche le rendu tant que le kernel n'a pas chargé la session
   if (!kernel || !kernel.currentSession) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-500">
-        <div className="animate-pulse">Initialisation du moteur EPS...</div>
+      <div className="flex flex-col h-screen items-center justify-center bg-slate-50 text-slate-500 space-y-4">
+        <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+        <div className="font-medium animate-pulse">Initialisation du moteur EPS...</div>
       </div>
     );
   }
@@ -65,7 +66,6 @@ function App() {
   return (
     <div className="flex h-screen bg-slate-100 font-sans text-slate-900 overflow-hidden">
       
-      {/* Sidebar sécurisée qui reçoit les données dynamiques */}
       <Sidebar 
         selectedActivity={kernel.currentSession.activity}
         onSelectActivity={(act) => {

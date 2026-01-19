@@ -4,7 +4,7 @@ import { Student, Observation, ActivityCategory, CAType, Session, Criterion } fr
 // --- CONFIGURATION PAR DÉFAUT (Sécurité) ---
 
 export const DEFAULT_CA_LIST: ActivityCategory[] = [
-  { id: 'CA1', label: 'CA1 : Performance', shortLabel: 'Perf.', iconName: 'Timer', color: 'text-blue-500', bgColor: 'bg-blue-50', activities: ['Demi-fond', 'Natation', 'Musculation'] },
+  { id: 'CA1', label: 'CA1 : Performance', shortLabel: 'Perf.', iconName: 'Timer', color: 'text-blue-500', bgColor: 'bg-blue-50', activities: ['Demi-fond', 'Natation', 'Musculation', 'Vitesse-Relais'] },
   { id: 'CA2', label: 'CA2 : Adaptation', shortLabel: 'Nature', iconName: 'Compass', color: 'text-emerald-500', bgColor: 'bg-emerald-50', activities: ['Escalade', 'Orientation', 'Sauvetage'] },
   { id: 'CA3', label: 'CA3 : Artistique', shortLabel: 'Arts', iconName: 'Music', color: 'text-purple-500', bgColor: 'bg-purple-50', activities: ['Danse', 'Acrosport', 'Cirque'] },
   { id: 'CA4', label: 'CA4 : Opposition', shortLabel: 'Duel', iconName: 'Swords', color: 'text-red-500', bgColor: 'bg-red-50', activities: ['Badminton', 'Basket-ball', 'Boxe', 'Volley'] },
@@ -14,8 +14,8 @@ export const DEFAULT_CA_LIST: ActivityCategory[] = [
 const DEFAULT_SESSION: Session = {
   id: 'init-session',
   date: new Date().toISOString().split('T')[0],
-  activity: 'Basket-ball',
-  ca: 'CA4',
+  activity: 'Demi-fond',
+  ca: 'CA1',
   group: 'Classe Entière',
   showSessionToStudents: true,
   showObservationToStudents: true,
@@ -26,11 +26,11 @@ const DEFAULT_SESSION: Session = {
 };
 
 // --- HELPER DE SÉCURITÉ ---
-// Empêche le crash si le localStorage contient du JSON corrompu
 function safelyParse<T>(key: string, fallback: T): T {
   try {
     const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : fallback;
+    if (!item || item === 'undefined' || item === 'null') return fallback;
+    return JSON.parse(item);
   } catch (e) {
     console.warn(`Erreur de lecture pour ${key}, retour aux valeurs par défaut.`);
     return fallback;
@@ -45,10 +45,16 @@ export const useEPSKernel = (sessionId: string | null) => {
   const [observations, setObservations] = useState<Observation[]>(() => safelyParse('eps_observations', []));
   const [criteria, setCriteria] = useState<Criterion[]>(() => safelyParse('eps_criteria', []));
   
-  // Session avec merge de sécurité pour garantir que tous les champs existent
+  // Session avec merge de sécurité
   const [currentSession, setCurrentSession] = useState<Session>(() => {
     const saved = safelyParse('eps_current_session', DEFAULT_SESSION);
-    return { ...DEFAULT_SESSION, ...saved }; // Merge pour s'assurer qu'aucun champ n'est undefined
+    // On force la présence des tableaux pour éviter les crashs .map()
+    return { 
+        ...DEFAULT_SESSION, 
+        ...saved, 
+        timeline: saved.timeline || [],
+        variables: saved.variables || { simplify: '', complexify: '' }
+    }; 
   });
 
   // 2. PERSISTENCE AUTOMATIQUE
@@ -69,7 +75,7 @@ export const useEPSKernel = (sessionId: string | null) => {
     return Array.from(groups).sort();
   }, [students]);
 
-  // Moteur de Stats (Simplifié pour la stabilité)
+  // Moteur de Stats (Simplifié)
   const stats = useMemo(() => {
     const res: Record<string, any> = {};
     filteredStudents.forEach(s => {
@@ -129,9 +135,11 @@ export const useEPSKernel = (sessionId: string | null) => {
   };
 
   const updateCriteria = (newCriteria: Criterion[]) => setCriteria(newCriteria);
+  
   const applyCAPreset = (caId: CAType) => {
-    // Logique simplifiée pour l'instant
-    console.log("Preset loading requested for", caId);
+     // Preset simple pour éviter le vide
+     console.log(`Application du preset ${caId}`);
+     // TODO: Implémenter des critères par défaut selon le CA
   };
 
   return {

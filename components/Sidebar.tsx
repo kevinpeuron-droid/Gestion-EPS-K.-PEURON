@@ -38,7 +38,7 @@ export const Sidebar: React.FC<Props> = ({
 
   // Trouver le CA actif sans crasher si l'activité n'existe pas
   const activeCA = safeCAList.find(ca => ca.activities.includes(selectedActivity));
-  const activeCAId = activeCA ? activeCA.id : 'CA4';
+  const activeCAId = activeCA ? activeCA.id : 'CA1';
   
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     [activeCAId]: true

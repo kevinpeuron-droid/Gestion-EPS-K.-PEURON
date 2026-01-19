@@ -66,18 +66,18 @@ export interface Session {
   ca: CAType;
   group: string;
   
-  // Visibility - MANDATORY
+  // Visibility
   showSessionToStudents: boolean;
   showObservationToStudents: boolean;
   
-  // Didactic - MANDATORY
+  // Didactic
   variables: { simplify: string; complexify: string };
   
-  // Logistical - MANDATORY
+  // Logistical
   materials: string;
   safetyAlert: string;
   
-  // Temporal - MANDATORY ARRAY
+  // Temporal
   timeline: SessionSequence[];
 }
 
@@ -86,10 +86,11 @@ export interface Session {
 export type ObservationValue = 
   | { type: 'BOOLEAN'; value: boolean }
   | { type: 'COUNTER'; value: number }
-  | { type: 'TIME'; value: number }
+  | { type: 'TIME'; value: number } // value in ms
   | { type: 'RATING'; value: number }
   | { type: 'STRING'; value: string }
-  | { type: 'COORDINATE'; x: number; y: number };
+  | { type: 'COORDINATE'; x: number; y: number }
+  | { type: 'LAPS'; totalTime: number; laps: number[] }; // Nouveau pour CA1
 
 export interface Observation {
   id: string;
