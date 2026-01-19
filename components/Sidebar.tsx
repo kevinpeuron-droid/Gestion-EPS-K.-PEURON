@@ -1,22 +1,17 @@
 import React, { useState } from 'react';
 import { 
   Timer, Compass, Music, Swords, HeartPulse, 
-  ChevronDown, ChevronRight, Users,
-  PanelLeftClose, PanelLeftOpen, Activity, Plus, X
+  ChevronDown, ChevronRight,
+  PanelLeftClose, PanelLeftOpen, Activity, LayoutGrid
 } from 'lucide-react';
-import { ActivityCategory, CAType } from '../types';
+import { ActivityCategory } from '../types';
 
 interface Props {
-  selectedActivity: string;
+  caDefinitions: ActivityCategory[];
+  currentActivity: string;
   onSelectActivity: (activity: string) => void;
-  onNavigateClasses: () => void;
   isCollapsed: boolean;
-  toggleCollapse: () => void;
-  
-  // Props dynamiques
-  caList: ActivityCategory[];
-  onAddSport: (caId: CAType, name: string) => void;
-  onRemoveSport: (caId: CAType, name: string) => void;
+  onToggleCollapse: () => void;
 }
 
 const IconMap: Record<string, React.ElementType> = {
@@ -24,141 +19,114 @@ const IconMap: Record<string, React.ElementType> = {
 };
 
 export const Sidebar: React.FC<Props> = ({ 
-  selectedActivity, 
+  caDefinitions,
+  currentActivity, 
   onSelectActivity, 
-  onNavigateClasses,
   isCollapsed,
-  toggleCollapse,
-  caList,
-  onAddSport,
-  onRemoveSport
+  onToggleCollapse
 }) => {
-  // SÉCURITÉ : caList doit être un tableau
-  const safeCAList = Array.isArray(caList) ? caList : [];
-
-  // Trouver le CA actif sans crasher si l'activité n'existe pas
-  const activeCA = safeCAList.find(ca => ca.activities.includes(selectedActivity));
-  const activeCAId = activeCA ? activeCA.id : 'CA1';
-  
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    [activeCAId]: true
+  // Gestion locale de l'ouverture des menus
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    const activeCA = caDefinitions.find(ca => ca.activities.includes(currentActivity));
+    return activeCA ? { [activeCA.id]: true } : {};
   });
 
   const toggleSection = (id: string) => {
     setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleAddSportClick = (e: React.MouseEvent, caId: CAType) => {
-    e.stopPropagation();
-    const name = prompt("Nom de la nouvelle activité :");
-    if (name && name.trim().length > 0) {
-      onAddSport(caId, name.trim());
-      setOpenSections(prev => ({ ...prev, [caId]: true }));
-    }
-  };
-
-  const handleRemoveSportClick = (e: React.MouseEvent, caId: CAType, activityName: string) => {
-    e.stopPropagation();
-    if (confirm(`Supprimer "${activityName}" de la liste ?`)) {
-      onRemoveSport(caId, activityName);
-    }
-  };
-
   return (
-    <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-slate-900 text-white flex flex-col shadow-xl z-20 transition-all duration-300`}>
-      {/* Header */}
-      <div className="p-4 h-20 border-b border-slate-800 flex items-center justify-between">
-        {!isCollapsed && (
-          <h1 className="text-xl font-extrabold tracking-tight flex items-center gap-2 text-white">
-            <Activity className="text-emerald-400" /> 
-            <span>Observ'EPS</span>
-          </h1>
-        )}
-        {isCollapsed && <Activity className="text-emerald-400 mx-auto" />}
-        <button onClick={toggleCollapse} className="text-slate-500 hover:text-white transition">
-           {isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20}/>}
-        </button>
+    <aside className={`${isCollapsed ? 'w-24' : 'w-80'} bg-slate-900 text-slate-300 flex flex-col shadow-2xl z-50 transition-all duration-300 ease-in-out border-r border-slate-800`}>
+      
+      {/* Brand Header */}
+      <div className={`h-24 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-8'} border-b border-slate-800/60`}>
+        <div className="flex items-center gap-3.5">
+           <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+              <Activity size={20} strokeWidth={3} />
+           </div>
+           {!isCollapsed && (
+             <div>
+               <h1 className="font-bold text-white text-lg tracking-tight leading-none">Observ'EPS</h1>
+               <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Pro Edition</span>
+             </div>
+           )}
+        </div>
       </div>
 
-      <nav className="flex-1 py-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
-        <div className="space-y-1">
-          {safeCAList.map((ca) => {
-            const Icon = IconMap[ca.iconName] || Timer;
+      {/* Navigation Scrollable */}
+      <div className="flex-1 overflow-y-auto py-8 space-y-4 px-4 scrollbar-hide">
+         
+         {!isCollapsed && <div className="px-4 text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Champs d'Apprentissage</div>}
+
+         {caDefinitions.map(ca => {
+            const Icon = IconMap[ca.iconName] || Activity;
             const isOpen = openSections[ca.id];
-            const isActiveContext = ca.activities.includes(selectedActivity);
+            const isContextActive = ca.activities.includes(currentActivity);
 
             return (
-              <div key={ca.id} className="px-2">
-                <button 
-                  onClick={() => !isCollapsed && toggleSection(ca.id)}
-                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-colors group relative ${isActiveContext ? 'bg-slate-800' : 'hover:bg-slate-800'}`}
-                  title={ca.label}
-                >
-                  <div className={`flex items-center gap-3 ${ca.color}`}>
-                     <Icon size={20} />
-                     {!isCollapsed && <span className="font-semibold text-sm text-slate-200">{ca.shortLabel}</span>}
-                  </div>
-                  
-                  {!isCollapsed && (
-                    <div className="flex items-center gap-2">
-                        <div 
-                            onClick={(e) => handleAddSportClick(e, ca.id)}
-                            className="p-1 rounded text-slate-500 hover:text-emerald-400 hover:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Ajouter une activité"
-                        >
-                            <Plus size={14} />
-                        </div>
-                        <span className="text-slate-500">
-                           {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                        </span>
-                    </div>
-                  )}
-                </button>
-
-                {isOpen && !isCollapsed && (
-                  <div className="mt-1 ml-4 space-y-1 border-l border-slate-700 pl-2">
-                    {ca.activities.map(activity => (
-                      <div key={activity} className="relative group/item">
-                          <button
-                            onClick={() => onSelectActivity(activity)}
-                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition pr-8 ${
-                              selectedActivity === activity 
-                                ? `${ca.bgColor} ${ca.color} font-bold`
-                                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                            }`}
-                          >
-                            {activity}
-                          </button>
-                          
-                          <button 
-                            onClick={(e) => handleRemoveSportClick(e, ca.id, activity)}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-slate-600 hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-opacity"
-                            title="Supprimer"
-                          >
-                            <X size={12} />
-                          </button>
-                      </div>
-                    ))}
-                    {ca.activities.length === 0 && (
-                        <div className="px-3 py-2 text-xs text-slate-600 italic">Aucune activité</div>
+              <div key={ca.id} className="group">
+                 {/* Main CA Button */}
+                 <button 
+                    onClick={() => !isCollapsed && toggleSection(ca.id)}
+                    className={`relative w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-4'} py-3.5 rounded-2xl transition-all duration-200 
+                      ${isContextActive 
+                        ? 'bg-white/10 text-white shadow-lg' 
+                        : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                 >
+                    {/* Active Marker (Left) */}
+                    {isContextActive && !isCollapsed && (
+                      <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full ${ca.color.replace('text-', 'bg-')}`}></div>
                     )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-slate-800 space-y-2">
-         <button 
-            onClick={onNavigateClasses}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition text-indigo-300 bg-slate-800 hover:bg-indigo-900 hover:text-white`}
+                    <div className="flex items-center gap-4">
+                       <Icon 
+                        size={22} 
+                        className={`transition-colors duration-300 ${isContextActive ? ca.color : 'text-slate-500 group-hover:text-slate-300'}`} 
+                       />
+                       {!isCollapsed && <span className="font-semibold text-[15px]">{ca.shortLabel}</span>}
+                    </div>
+                    {!isCollapsed && (
+                       <span className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''} opacity-50`}>
+                         <ChevronDown size={16}/>
+                       </span>
+                    )}
+                 </button>
+
+                 {/* Sub-menu (Activities) */}
+                 {!isCollapsed && isOpen && (
+                    <div className="mt-2 space-y-1">
+                       {ca.activities.map(act => (
+                          <button
+                            key={act}
+                            onClick={() => onSelectActivity(act)}
+                            className={`relative block w-full text-left text-[14px] py-2.5 pl-14 pr-4 rounded-xl transition-all
+                              ${currentActivity === act 
+                                ? 'text-white font-medium bg-white/5' 
+                                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+                              }`}
+                          >
+                            {currentActivity === act && (
+                               <div className={`absolute left-10 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full ${ca.color.replace('text-', 'bg-')}`}></div>
+                            )}
+                            {act}
+                          </button>
+                       ))}
+                    </div>
+                 )}
+              </div>
+            )
+         })}
+      </div>
+
+      {/* Footer / Collapse */}
+      <div className="p-6 border-t border-slate-800/60">
+        <button 
+          onClick={onToggleCollapse} 
+          className="w-full flex items-center justify-center p-3 rounded-xl hover:bg-slate-800 text-slate-500 hover:text-white transition-colors"
         >
-            <Users size={20} />
-            {!isCollapsed && <span>Gestion Classes</span>}
-         </button>
+            {isCollapsed ? <PanelLeftOpen size={20}/> : <PanelLeftClose size={20}/>}
+        </button>
       </div>
     </aside>
   );

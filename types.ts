@@ -1,34 +1,22 @@
-export type UserRole = 'PROF' | 'ELEVE';
-export type ViewState = 'DASHBOARD' | 'CLASSES' | 'OBSERVATION_SETUP' | 'SESSION_PLANNER' | 'STUDENT_MODE' | 'TEACHER_MOBILE';
+// --- NAVIGATION TYPES ---
 
-// --- RICH UI MODES ---
-export type UIMode = 
-  | 'BINARY'          // Oui/Non
-  | 'MULTI_CHOICE'    // Liste d'options
-  | 'STEPPER'         // Compteur + / -
-  | 'CHRONO'          // Chronomètre
-  | 'TIMER_HOLD'      // Appui long
-  | 'SCALE_GRADIENT'  // Echelle 1-4
-  | 'HEATMAP_ZONE';   // Zones terrain
+export type ModuleTab = 'DATA' | 'CONFIG' | 'SESSION';
 
-export interface CriterionConfig {
-  options?: { label: string; value: any; color?: string }[];
-  targetValue?: number;
-  isBlocking?: boolean;
-  unit?: string;
-  min?: number;
-  max?: number;
-}
+export type CAType = 'CA1' | 'CA2' | 'CA3' | 'CA4' | 'CA5';
 
-export interface Criterion {
-  id: string;
+export interface ActivityCategory {
+  id: CAType;
   label: string;
-  type: 'BOOLEAN' | 'COUNTER' | 'RATING' | 'TIME' | 'COMPLEX'; 
-  uiMode: UIMode;
-  config: CriterionConfig;
+  shortLabel: string;
+  iconName: string;
+  color: string;
+  bgColor: string;
+  activities: string[];
 }
 
-// --- CORE ENTITIES ---
+export type ViewState = 'DASHBOARD' | 'CLASSES' | 'SESSION_PLANNER' | 'STUDENT_MODE' | 'TEACHER_MOBILE';
+
+// --- DATA TYPES ---
 
 export interface Student {
   id: string;
@@ -38,19 +26,53 @@ export interface Student {
   gender: 'M' | 'F';
 }
 
-export type CAType = 'CA1' | 'CA2' | 'CA3' | 'CA4' | 'CA5';
-
-export interface ActivityCategory {
-  id: CAType;
-  label: string;
-  shortLabel: string;
-  iconName: string; 
-  color: string;
-  bgColor: string;
-  activities: string[];
+export interface StudentStats {
+  weightedAverage: number;
+  totalObservations: number;
+  reliabilityIndex: number;
+  criteriaStats: Record<string, { attempts: number; success: number; rate: number }>;
+  // Optional properties for potential compatibility with Dashboard usage
+  stats?: Record<string, any>;
+  reliability?: number;
 }
 
-// --- SESSION TYPES ---
+// --- OBSERVATION & CRITERIA ---
+
+export type UIMode = 'BINARY' | 'MULTI_CHOICE' | 'STEPPER' | 'CHRONO' | 'SCALE_GRADIENT' | 'RATING' | 'TIMER_HOLD' | 'HEATMAP_ZONE';
+
+export interface CriterionConfig {
+  isBlocking?: boolean;
+  options?: { label: string; value: string; color?: string }[];
+  min?: number;
+  max?: number;
+  unit?: string;
+  [key: string]: any;
+}
+
+export interface Criterion {
+  id: string;
+  label: string;
+  type: string;
+  uiMode: UIMode;
+  config: CriterionConfig;
+}
+
+export interface Observation {
+  id?: string;
+  timestamp?: number;
+  sessionId: string;
+  studentId: string;
+  authorRole: 'ELEVE' | 'PROF';
+  
+  // Flexible fields to support both Student and Teacher views
+  variableName?: string;
+  criteriaId?: string;
+  value?: any;
+  isSuccess?: boolean;
+  type?: string;
+}
+
+// --- SESSION ---
 
 export interface SessionSequence {
   id: string;
@@ -61,49 +83,23 @@ export interface SessionSequence {
 
 export interface Session {
   id: string;
-  date: string;
   activity: string;
-  ca: CAType;
   group: string;
-  
-  // Visibility
+  ca: string;
+  date?: string;
+  timeline: SessionSequence[];
+  variables?: { simplify: string; complexify: string };
+  safetyAlert?: string;
+  materials?: string;
   showSessionToStudents: boolean;
   showObservationToStudents: boolean;
-  
-  // Didactic
-  variables: { simplify: string; complexify: string };
-  
-  // Logistical
-  materials: string;
-  safetyAlert: string;
-  
-  // Temporal
-  timeline: SessionSequence[];
 }
 
-// --- OBSERVATION & DATA TYPES ---
+// --- KERNEL ---
 
-export type ObservationValue = 
-  | { type: 'BOOLEAN'; value: boolean }
-  | { type: 'COUNTER'; value: number }
-  | { type: 'TIME'; value: number } // value in ms
-  | { type: 'RATING'; value: number }
-  | { type: 'STRING'; value: string }
-  | { type: 'COORDINATE'; x: number; y: number }
-  | { type: 'LAPS'; totalTime: number; laps: number[] }; // Nouveau pour CA1
-
-export interface Observation {
-  id: string;
-  sessionId: string;
-  studentId: string;
-  variableName: string;
-  value: ObservationValue;
-  timestamp: number;
-  authorRole: UserRole;
-}
-
-export interface StudentStats {
-  studentId: string;
-  stats: Record<string, number | string>;
-  reliability: number;
+export interface KernelState {
+  currentActivity: string;
+  currentCA: CAType;
+  activeTab: ModuleTab;
+  isSidebarCollapsed: boolean;
 }
