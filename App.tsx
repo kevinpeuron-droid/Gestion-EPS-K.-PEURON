@@ -8,7 +8,7 @@ function App() {
   const kernel = useEPSKernel();
 
   return (
-    <div className="flex h-screen bg-slate-50/50 font-sans text-slate-900 overflow-hidden selection:bg-indigo-500 selection:text-white">
+    <div className="flex h-screen bg-[#F8FAFC] font-sans text-slate-900 overflow-hidden selection:bg-indigo-500 selection:text-white">
       
       {/* 1. SIDEBAR (Dock Latéral) */}
       <Sidebar 
@@ -21,8 +21,8 @@ function App() {
 
       {/* 2. MAIN CONTENT (Zone de travail) */}
       <div className="flex-1 flex flex-col h-full min-w-0 relative">
-        {/* Background décoratif subtil */}
-        <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-white to-slate-50 opacity-60 pointer-events-none z-0"></div>
+        {/* Background décoratif très subtil */}
+        <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-white/80 to-transparent pointer-events-none z-0"></div>
 
         <div className="flex-1 z-10 overflow-hidden flex flex-col">
           <CAModule 
