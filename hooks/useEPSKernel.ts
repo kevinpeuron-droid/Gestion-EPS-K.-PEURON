@@ -51,13 +51,11 @@ const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
 ];
 
 // REGISTRE DES MOTEURS D'APPLICATION
-// C'est ici qu'on définit quel sport utilise quelle interface
 const INITIAL_MODULE_REGISTRY: Record<string, AppModuleType> = {
     'Natation': 'PLIJADOUR',
     'Demi-fond': 'PLIJADOUR',
     'Vitesse': 'PLIJADOUR',
     'Course Orientation': 'MINGUEN',
-    // Les autres sports par défaut sont en 'STANDARD' implicitement
 };
 
 // Mock Data
@@ -150,7 +148,6 @@ export const useEPSKernel = (sessionId?: string) => {
   const addObservation = (obs: Omit<Observation, 'id' | 'timestamp'>) => {
       const newObs = { ...obs, id: crypto.randomUUID(), timestamp: Date.now() };
       setObservations(prev => [...prev, newObs]);
-      console.log("Observation added:", newObs);
   };
   
   const updateSession = (patch: Partial<Session>) => setCurrentSession(prev => ({ ...prev, ...patch }));
@@ -158,13 +155,23 @@ export const useEPSKernel = (sessionId?: string) => {
   const updateCriteria = (list: Criterion[]) => setCriteria(list);
   
   // --- GESTION DES ACTIVITÉS & MOTEURS ---
-  const addActivity = (caId: CAType, activityName: string) => {
+  
+  /**
+   * Ajoute une nouvelle activité à un Champ d'Apprentissage
+   * @param caId ID du CA (CA1, CA2...)
+   * @param activityName Nom du sport
+   * @param engineType Type de moteur (STANDARD, PLIJADOUR, MINGUEN)
+   */
+  const addActivity = (caId: CAType, activityName: string, engineType: AppModuleType = 'STANDARD') => {
+      // 1. Ajouter à la liste du CA
       setCaDefinitions(prev => prev.map(ca => {
           if (ca.id === caId && !ca.activities.includes(activityName)) {
               return { ...ca, activities: [...ca.activities, activityName] };
           }
           return ca;
       }));
+      // 2. Enregistrer le moteur
+      setModuleRegistry(prev => ({ ...prev, [activityName]: engineType }));
   };
 
   const renameActivity = (caId: CAType, oldName: string, newName: string) => {
@@ -176,7 +183,7 @@ export const useEPSKernel = (sessionId?: string) => {
           return ca;
       }));
       
-      // Mettre à jour le registre si nécessaire
+      // Mettre à jour le registre
       if (moduleRegistry[oldName]) {
           const type = moduleRegistry[oldName];
           setModuleRegistry(prev => {
@@ -192,16 +199,26 @@ export const useEPSKernel = (sessionId?: string) => {
   };
 
   const deleteActivity = (caId: CAType, activityName: string) => {
+      // 1. Retirer de la liste
       setCaDefinitions(prev => prev.map(ca => {
           if (ca.id === caId) {
               return { ...ca, activities: ca.activities.filter(a => a !== activityName) };
           }
           return ca;
       }));
+      // 2. Nettoyer le registre
+      setModuleRegistry(prev => {
+          const next = { ...prev };
+          delete next[activityName];
+          return next;
+      });
+      // 3. Fallback si on supprime l'activité courante
+      if (currentActivity === activityName) {
+          selectActivity(caDefinitions[0].activities[0]);
+      }
   };
 
-  // Lier un sport à un moteur spécifique
-  const linkActivityToModule = (activityName: string, type: AppModuleType) => {
+  const updateActivityEngine = (activityName: string, type: AppModuleType) => {
       setModuleRegistry(prev => ({ ...prev, [activityName]: type }));
   };
 
@@ -240,7 +257,7 @@ export const useEPSKernel = (sessionId?: string) => {
     addActivity,
     renameActivity,
     deleteActivity,
-    linkActivityToModule,
+    updateActivityEngine,
     
     // Compatibilité
     caList: caDefinitions,
