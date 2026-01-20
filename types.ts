@@ -1,9 +1,21 @@
 
 // --- NAVIGATION & STRUCTURE ---
 
-export type ModuleTab = 'DATA' | 'CONFIG' | 'SESSION';
+export type ModuleTab = 'DATA' | 'CONFIG' | 'SESSION' | 'APP';
 
 export type CAType = 'CA1' | 'CA2' | 'CA3' | 'CA4' | 'CA5';
+
+export type EngineId = string; // Devenu dynamique (ex: 'STANDARD', 'CHRONO_PLIJADOUR', 'CUSTOM_123')
+
+export interface AppDefinition {
+  id: string;
+  name: string;
+  description: string;
+  componentKey: 'STANDARD' | 'CHRONO_PLIJADOUR' | 'MINGUEN'; // Le moteur technique sous-jacent
+  isSystem: boolean; // Si true, impossible à supprimer
+  icon: string; // Nom de l'icône Lucide
+  color: string; // Tailwind color class
+}
 
 export interface ActivityCategory {
   id: CAType;

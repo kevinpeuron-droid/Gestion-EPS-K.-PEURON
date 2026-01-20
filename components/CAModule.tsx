@@ -1,8 +1,10 @@
 import React from 'react';
-import { ActivityCategory, ModuleTab, CAType } from '../types';
+import { ActivityCategory, ModuleTab, CAType, EngineId } from '../types';
+import { ExternalAppLoader } from './ExternalAppLoader';
 import { 
   BarChart3, Settings2, BookOpenCheck, 
-  Database, Plus, Layout, Zap, PenTool
+  Database, Plus, Layout, Zap, PenTool,
+  Gamepad2, Cpu
 } from 'lucide-react';
 
 interface Props {
@@ -10,6 +12,7 @@ interface Props {
   ca: ActivityCategory;
   activeTab: ModuleTab;
   onTabChange: (tab: ModuleTab) => void;
+  currentEngineId: EngineId; // Nouvelle prop
 }
 
 // Configuration des Thèmes Visuels (Gradients & Accents)
@@ -21,14 +24,23 @@ const THEMES: Record<CAType, { bg: string; text: string; light: string; border: 
   'CA5': { bg: 'bg-rose-500', text: 'text-rose-600', light: 'bg-rose-50', border: 'border-rose-200' }
 };
 
-export const CAModule: React.FC<Props> = ({ activity, ca, activeTab, onTabChange }) => {
+export const CAModule: React.FC<Props> = ({ activity, ca, activeTab, onTabChange, currentEngineId }) => {
   const theme = THEMES[ca.id] || THEMES['CA1'];
   
+  // Construction dynamique des onglets
   const tabs = [
-    { id: 'DATA', label: 'Analyse & Données', icon: BarChart3 },
-    { id: 'CONFIG', label: 'Configuration', icon: Settings2 },
+    { id: 'DATA', label: 'Analyse', icon: BarChart3 },
+    { id: 'CONFIG', label: 'Config', icon: Settings2 },
     { id: 'SESSION', label: 'Séance', icon: BookOpenCheck },
-  ] as const;
+  ];
+
+  // Si un moteur spécifique est actif (pas STANDARD), on ajoute l'onglet APP
+  if (currentEngineId && currentEngineId !== 'STANDARD') {
+      const appLabel = currentEngineId === 'CHRONO_PLIJADOUR' ? 'Chrono' : 'Orientation';
+      const AppIcon = currentEngineId === 'CHRONO_PLIJADOUR' ? Cpu : Gamepad2;
+      // On insère l'onglet App en premier ou en dernier ? Demandé : "un 4ème onglet à droite"
+      tabs.push({ id: 'APP', label: appLabel, icon: AppIcon });
+  }
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden bg-slate-50/30">
@@ -76,72 +88,82 @@ export const CAModule: React.FC<Props> = ({ activity, ca, activeTab, onTabChange
         </div>
       </header>
 
-      {/* 2. MAIN CONTENT (EMPTY SHELL) */}
+      {/* 2. MAIN CONTENT */}
       <div className="flex-1 px-10 pb-10 overflow-hidden">
-        <div className="h-full w-full bg-white rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden flex flex-col items-center justify-center text-center p-12 group">
-           
-           {/* Decor: Background Blob */}
-           <div className={`
-              absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-              w-[600px] h-[600px] ${theme.bg} opacity-[0.03] rounded-full blur-[120px] 
-              pointer-events-none transition-all duration-1000 group-hover:opacity-[0.05] z-0
-           `}></div>
-
-           {/* Placeholder Content Based on Tab */}
-           <div className="relative z-10 max-w-lg mx-auto space-y-6 animate-enter">
-              
-              {activeTab === 'DATA' && (
-                <>
-                  <div className="w-24 h-24 mx-auto bg-slate-50 rounded-[1.5rem] flex items-center justify-center shadow-inner text-slate-300 mb-2">
-                     <Database size={40} strokeWidth={1.5} />
-                  </div>
-                  <h2 className="text-3xl font-bold text-slate-900">Données & Analyse</h2>
-                  <p className="text-slate-500 text-lg">
-                    Aucune source de données connectée pour <span className="font-semibold">{activity}</span>.
-                    Importez des résultats ou connectez un flux en temps réel.
-                  </p>
-                  <button className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:scale-105 active:scale-95 transition-all shadow-xl shadow-slate-900/10 flex items-center gap-3 mx-auto">
-                     <Plus size={20} /> Connecter une source
-                  </button>
-                </>
-              )}
-
-              {activeTab === 'CONFIG' && (
-                <>
-                  <div className="w-24 h-24 mx-auto bg-slate-50 rounded-[1.5rem] flex items-center justify-center shadow-inner text-slate-300 mb-2">
-                     <Layout size={40} strokeWidth={1.5} />
-                  </div>
-                  <h2 className="text-3xl font-bold text-slate-900">Configuration</h2>
-                  <p className="text-slate-500 text-lg">
-                    Définissez les observables et les critères d'évaluation pour ce module.
-                    L'interface s'adaptera automatiquement.
-                  </p>
-                  <button className="px-8 py-4 bg-white border border-slate-200 text-slate-900 rounded-2xl font-bold hover:bg-slate-50 active:scale-95 transition-all shadow-lg flex items-center gap-3 mx-auto">
-                     <Zap size={20} className="text-amber-500"/> Assistant Création
-                  </button>
-                </>
-              )}
-
-              {activeTab === 'SESSION' && (
-                <>
-                  <div className="w-24 h-24 mx-auto bg-slate-50 rounded-[1.5rem] flex items-center justify-center shadow-inner text-slate-300 mb-2">
-                     <PenTool size={40} strokeWidth={1.5} />
-                  </div>
-                  <h2 className="text-3xl font-bold text-slate-900">Fiche de Séance</h2>
-                  <p className="text-slate-500 text-lg">
-                    La planification est vide. Commencez par définir les objectifs pédagogiques et la chronologie.
-                  </p>
-                  <div className="flex gap-4 justify-center">
-                    <button className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:scale-105 active:scale-95 transition-all shadow-xl shadow-slate-900/10">
-                       Nouvelle Séance
-                    </button>
-                  </div>
-                </>
-              )}
-
+        
+        {/* CAS SPÉCIAL : EXTERNAL APP LOADER (Full Container) */}
+        {activeTab === 'APP' ? (
+           <div className="h-full w-full animate-enter">
+              <ExternalAppLoader engineId={currentEngineId} activityName={activity} />
            </div>
+        ) : (
+          /* CONTENU STANDARD (Bento Shell) */
+          <div className="h-full w-full bg-white rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden flex flex-col items-center justify-center text-center p-12 group">
+             
+             {/* Decor: Background Blob */}
+             <div className={`
+                absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
+                w-[600px] h-[600px] ${theme.bg} opacity-[0.03] rounded-full blur-[120px] 
+                pointer-events-none transition-all duration-1000 group-hover:opacity-[0.05] z-0
+             `}></div>
 
-        </div>
+             {/* Placeholder Content Based on Tab */}
+             <div className="relative z-10 max-w-lg mx-auto space-y-6 animate-enter">
+                
+                {activeTab === 'DATA' && (
+                  <>
+                    <div className="w-24 h-24 mx-auto bg-slate-50 rounded-[1.5rem] flex items-center justify-center shadow-inner text-slate-300 mb-2">
+                       <Database size={40} strokeWidth={1.5} />
+                    </div>
+                    <h2 className="text-3xl font-bold text-slate-900">Données & Analyse</h2>
+                    <p className="text-slate-500 text-lg">
+                      Aucune source de données connectée pour <span className="font-semibold">{activity}</span>.
+                      Importez des résultats ou connectez un flux en temps réel.
+                    </p>
+                    <button className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:scale-105 active:scale-95 transition-all shadow-xl shadow-slate-900/10 flex items-center gap-3 mx-auto">
+                       <Plus size={20} /> Connecter une source
+                    </button>
+                  </>
+                )}
+
+                {activeTab === 'CONFIG' && (
+                  <>
+                    <div className="w-24 h-24 mx-auto bg-slate-50 rounded-[1.5rem] flex items-center justify-center shadow-inner text-slate-300 mb-2">
+                       <Layout size={40} strokeWidth={1.5} />
+                    </div>
+                    <h2 className="text-3xl font-bold text-slate-900">Configuration</h2>
+                    <p className="text-slate-500 text-lg">
+                      Définissez les observables et les critères d'évaluation pour ce module.
+                      L'interface s'adaptera automatiquement.
+                    </p>
+                    <button className="px-8 py-4 bg-white border border-slate-200 text-slate-900 rounded-2xl font-bold hover:bg-slate-50 active:scale-95 transition-all shadow-lg flex items-center gap-3 mx-auto">
+                       <Zap size={20} className="text-amber-500"/> Assistant Création
+                    </button>
+                  </>
+                )}
+
+                {activeTab === 'SESSION' && (
+                  <>
+                    <div className="w-24 h-24 mx-auto bg-slate-50 rounded-[1.5rem] flex items-center justify-center shadow-inner text-slate-300 mb-2">
+                       <PenTool size={40} strokeWidth={1.5} />
+                    </div>
+                    <h2 className="text-3xl font-bold text-slate-900">Fiche de Séance</h2>
+                    <p className="text-slate-500 text-lg">
+                      La planification est vide. Commencez par définir les objectifs pédagogiques et la chronologie.
+                    </p>
+                    <div className="flex gap-4 justify-center">
+                      <button className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:scale-105 active:scale-95 transition-all shadow-xl shadow-slate-900/10">
+                         Nouvelle Séance
+                      </button>
+                    </div>
+                  </>
+                )}
+
+             </div>
+
+          </div>
+        )}
+
       </div>
 
     </div>

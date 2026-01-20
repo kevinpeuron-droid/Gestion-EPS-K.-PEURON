@@ -125,6 +125,7 @@ function App() {
                             ca={kernel.currentCA}
                             activeTab={kernel.activeTab}
                             onTabChange={kernel.setTab}
+                            currentEngineId={kernel.currentEngineId}
                         />
                     </div>
                 )}

@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType } from '../types';
+import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType, EngineId, AppDefinition } from '../types';
 
 // --- CONFIGURATION INITIALE STANDARD ---
-// Renommage des Labels (CA1...) et déplacement du thème dans 'description'
 const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
   { 
     id: 'CA1', 
@@ -56,6 +55,36 @@ const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
   }
 ];
 
+const INITIAL_APPS: AppDefinition[] = [
+  { 
+    id: 'STANDARD', 
+    name: 'Fiche Standard', 
+    description: 'Observation par critères, compteurs et notes.',
+    componentKey: 'STANDARD', 
+    isSystem: true,
+    icon: 'Layout',
+    color: 'text-slate-600'
+  },
+  { 
+    id: 'CHRONO_PLIJADOUR', 
+    name: 'Chrono Plijadour', 
+    description: 'Module expert Natation & Vitesse (Chrono multi-lignes).',
+    componentKey: 'CHRONO_PLIJADOUR', 
+    isSystem: true,
+    icon: 'Cpu',
+    color: 'text-cyan-600'
+  },
+  { 
+    id: 'MINGUEN', 
+    name: 'Minguen Orientation', 
+    description: 'Suivi de balises, poinçonnage et cartographie.',
+    componentKey: 'MINGUEN', 
+    isSystem: true,
+    icon: 'Compass',
+    color: 'text-emerald-600'
+  }
+];
+
 // Mock Data Minimal
 const MOCK_STUDENTS: Student[] = [
   { id: '1', lastName: 'DUPONT', firstName: 'Jean', gender: 'M', group: '2NDE 1' },
@@ -67,20 +96,37 @@ export const useEPSKernel = (sessionId?: string) => {
   const [caDefinitions, setCaDefinitions] = useState<ActivityCategory[]>(() => {
     const saved = localStorage.getItem('eps_ca_definitions');
     if (saved) {
-      // Migration simple si le format a changé (ajout de description si manquant)
       const parsed = JSON.parse(saved);
-      if (parsed.length > 0 && !parsed[0].description) {
-        return INITIAL_CA_DEFINITIONS; // Reset si vieux format
-      }
+      if (parsed.length > 0 && !parsed[0].description) return INITIAL_CA_DEFINITIONS;
       return parsed;
     }
     return INITIAL_CA_DEFINITIONS;
+  });
+
+  // Registre des Apps (Logiciels disponibles)
+  const [registeredApps, setRegisteredApps] = useState<AppDefinition[]>(() => {
+    const saved = localStorage.getItem('eps_registered_apps');
+    return saved ? JSON.parse(saved) : INITIAL_APPS;
+  });
+
+  // Registre des Moteurs (Lien Activité -> App ID)
+  const [engineRegistry, setEngineRegistry] = useState<Record<string, EngineId>>(() => {
+    const saved = localStorage.getItem('eps_engine_registry');
+    return saved ? JSON.parse(saved) : {};
   });
 
   // Persistance
   useEffect(() => {
     localStorage.setItem('eps_ca_definitions', JSON.stringify(caDefinitions));
   }, [caDefinitions]);
+
+  useEffect(() => {
+    localStorage.setItem('eps_registered_apps', JSON.stringify(registeredApps));
+  }, [registeredApps]);
+
+  useEffect(() => {
+    localStorage.setItem('eps_engine_registry', JSON.stringify(engineRegistry));
+  }, [engineRegistry]);
 
   // --- STATE PRINCIPAL ---
   const [currentActivity, setCurrentActivity] = useState<string>(() => localStorage.getItem('eps_activity') || 'Demi-fond');
@@ -112,6 +158,15 @@ export const useEPSKernel = (sessionId?: string) => {
   const currentCA = useMemo(() => {
     return caDefinitions.find(ca => ca.activities.includes(currentActivity)) || caDefinitions[0];
   }, [currentActivity, caDefinitions]);
+
+  // Récupère l'AppDefinition complète en fonction de l'activité courante
+  const currentApp = useMemo(() => {
+    const appId = engineRegistry[currentActivity] || 'STANDARD';
+    return registeredApps.find(app => app.id === appId) || registeredApps[0];
+  }, [currentActivity, engineRegistry, registeredApps]);
+
+  // Pour la compatibilité avec CAModule (qui attend juste l'ID ou le componentKey)
+  const currentEngineId = useMemo(() => currentApp.componentKey, [currentApp]);
 
   const filteredStudents = useMemo(() => {
     if (!currentSession.group) return students;
@@ -162,13 +217,16 @@ export const useEPSKernel = (sessionId?: string) => {
           }
           return ca;
       }));
-      // Si on supprime l'activité courante, on bascule sur la première dispo
       if (currentActivity === activityName) {
           const ca = caDefinitions.find(c => c.id === caId);
           const remaining = ca?.activities.filter(a => a !== activityName) || [];
           if (remaining.length > 0) selectActivity(remaining[0]);
           else selectActivity(caDefinitions[0].activities[0]);
       }
+      // Clean registry
+      const newRegistry = { ...engineRegistry };
+      delete newRegistry[activityName];
+      setEngineRegistry(newRegistry);
   };
 
   const renameActivity = (caId: CAType, oldName: string, newName: string) => {
@@ -179,7 +237,48 @@ export const useEPSKernel = (sessionId?: string) => {
           }
           return ca;
       }));
+      
+      const newRegistry = { ...engineRegistry };
+      if (newRegistry[oldName]) {
+        newRegistry[newName] = newRegistry[oldName];
+        delete newRegistry[oldName];
+        setEngineRegistry(newRegistry);
+      }
+
       if (currentActivity === oldName) selectActivity(newName);
+  };
+
+  const setActivityEngine = (activityName: string, engineId: EngineId) => {
+    setEngineRegistry(prev => ({ ...prev, [activityName]: engineId }));
+  };
+
+  // --- GESTION DES APPS (LOGICIELS) ---
+
+  const registerApp = (name: string, componentKey: AppDefinition['componentKey']) => {
+    const newApp: AppDefinition = {
+      id: `CUSTOM_${Date.now()}`,
+      name,
+      description: `Alias personnalisé basé sur ${componentKey}`,
+      componentKey,
+      isSystem: false,
+      icon: 'Box',
+      color: 'text-indigo-600'
+    };
+    setRegisteredApps(prev => [...prev, newApp]);
+  };
+
+  const deleteApp = (appId: string) => {
+    setRegisteredApps(prev => prev.filter(app => app.id !== appId || app.isSystem)); // Protect system apps
+    // Reset any activity using this app to STANDARD
+    const newRegistry = { ...engineRegistry };
+    let changed = false;
+    Object.keys(newRegistry).forEach(act => {
+      if (newRegistry[act] === appId) {
+        newRegistry[act] = 'STANDARD';
+        changed = true;
+      }
+    });
+    if(changed) setEngineRegistry(newRegistry);
   };
 
   return {
@@ -187,8 +286,12 @@ export const useEPSKernel = (sessionId?: string) => {
     caDefinitions,
     currentActivity,
     currentCA,
+    currentEngineId,
+    currentApp,
     activeTab,
     isSidebarCollapsed,
+    engineRegistry,
+    registeredApps,
     
     // Données
     students,
@@ -215,6 +318,9 @@ export const useEPSKernel = (sessionId?: string) => {
     addActivity,
     deleteActivity,
     renameActivity,
+    setActivityEngine,
+    registerApp,
+    deleteApp,
     
     // Compatibilité
     caList: caDefinitions,

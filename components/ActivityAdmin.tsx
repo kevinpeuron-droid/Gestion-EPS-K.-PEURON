@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useEPSKernel } from '../hooks/useEPSKernel';
-import { CAType } from '../types';
+import { CAType, AppDefinition } from '../types';
 import { 
-  Trash2, Plus, Edit3, Shield,
-  Timer, Compass, Swords, Music, HeartPulse, Activity, X
+  Trash2, Plus, Edit3, Shield, Check,
+  Timer, Compass, Swords, Music, HeartPulse, Activity, X,
+  Cpu, Gamepad2, Settings, LayoutGrid, AppWindow, Box, AlertCircle
 } from 'lucide-react';
 
 interface Props {
@@ -11,19 +12,29 @@ interface Props {
 }
 
 const IconMap: Record<string, React.ElementType> = {
-  Timer, Compass, Music, Swords, HeartPulse, Activity
+  Timer, Compass, Music, Swords, HeartPulse, Activity,
+  Cpu, Gamepad2, Settings, Box, Layout: LayoutGrid
 };
 
 export const ActivityAdmin: React.FC<Props> = ({ kernel }) => {
+  const [activeTab, setActiveTab] = useState<'ACTIVITIES' | 'APPS'>('ACTIVITIES');
+  
+  // -- STATES ACTIVITIES --
   const [newActivityInputs, setNewActivityInputs] = useState<Record<string, string>>({});
   const [editingActivity, setEditingActivity] = useState<{caId: CAType, name: string} | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [editEngineId, setEditEngineId] = useState<string>('STANDARD');
+
+  // -- STATES APPS --
+  const [newAppInput, setNewAppInput] = useState<{name: string, base: AppDefinition['componentKey']}>({ name: '', base: 'STANDARD' });
+
+  // --- LOGIC ACTIVITIES ---
 
   const handleInputChange = (caId: string, val: string) => {
       setNewActivityInputs(prev => ({ ...prev, [caId]: val }));
   };
 
-  const handleAdd = (caId: CAType) => {
+  const handleAddActivity = (caId: CAType) => {
       const name = newActivityInputs[caId];
       if (name) {
           kernel.addActivity(caId, name);
@@ -31,139 +42,293 @@ export const ActivityAdmin: React.FC<Props> = ({ kernel }) => {
       }
   };
 
-  const handleDelete = (caId: CAType, name: string) => {
+  const handleDeleteActivity = (caId: CAType, name: string) => {
       if (confirm(`Supprimer définitivement l'activité "${name}" ?`)) {
           kernel.deleteActivity(caId, name);
       }
   };
 
-  const startEdit = (caId: CAType, name: string) => {
+  const startEditActivity = (caId: CAType, name: string) => {
       setEditingActivity({ caId, name });
       setEditValue(name);
+      setEditEngineId(kernel.engineRegistry[name] || 'STANDARD');
   };
 
-  const saveEdit = () => {
-      if (editingActivity && editValue && editValue !== editingActivity.name) {
-          kernel.renameActivity(editingActivity.caId, editingActivity.name, editValue);
+  const saveEditActivity = () => {
+      if (editingActivity && editValue) {
+          if (editValue !== editingActivity.name) {
+              kernel.renameActivity(editingActivity.caId, editingActivity.name, editValue);
+          }
+          // Save Engine Choice
+          kernel.setActivityEngine(editValue, editEngineId);
       }
       setEditingActivity(null);
       setEditValue('');
   };
 
+  // --- LOGIC APPS ---
+
+  const handleAddApp = () => {
+      if (newAppInput.name) {
+          kernel.registerApp(newAppInput.name, newAppInput.base);
+          setNewAppInput({ name: '', base: 'STANDARD' });
+      }
+  };
+
+  const handleDeleteApp = (appId: string) => {
+      if (confirm("Supprimer ce logiciel ? Les activités qui l'utilisent repasseront en Standard.")) {
+          kernel.deleteApp(appId);
+      }
+  };
+
   return (
     <div className="max-w-7xl mx-auto pb-20 animate-fade-in space-y-8">
       
-      {/* Header */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200">
-          <div className="flex items-center gap-4">
-            <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg shadow-slate-900/20">
-                <Shield size={24} />
-            </div>
-            <div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Gestion des Activités</h2>
-                <p className="text-slate-500 font-medium">Ajoutez, modifiez ou supprimez les sports de chaque Champ.</p>
-            </div>
+      {/* HEADER & TABS */}
+      <div className="bg-white p-2 rounded-[2rem] shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex p-2 bg-slate-100/50 rounded-2xl gap-1 w-full md:w-auto">
+              <button 
+                onClick={() => setActiveTab('ACTIVITIES')}
+                className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'ACTIVITIES' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:bg-slate-200/50'}`}
+              >
+                  <LayoutGrid size={18} /> Activités Sportives
+              </button>
+              <button 
+                onClick={() => setActiveTab('APPS')}
+                className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'APPS' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:bg-slate-200/50'}`}
+              >
+                  <AppWindow size={18} /> Bibliothèque Logiciels
+              </button>
           </div>
-          <div className="text-xs font-bold uppercase tracking-widest text-slate-400 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-             Auto-Save Active
+          
+          <div className="px-6 flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-widest">
+             <Shield size={14} /> Administration
           </div>
       </div>
 
-      {/* Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {kernel.caDefinitions.map(ca => {
-              const Icon = IconMap[ca.iconName] || Activity;
-              const inputValue = newActivityInputs[ca.id] || '';
+      {/* === TAB 1: ACTIVITIES === */}
+      {activeTab === 'ACTIVITIES' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-enter">
+              {kernel.caDefinitions.map(ca => {
+                  const Icon = IconMap[ca.iconName] || Activity;
+                  const inputValue = newActivityInputs[ca.id] || '';
 
-              return (
-                  <div key={ca.id} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden group">
-                      
-                      {/* CA Header */}
-                      <div className="p-6 pb-2 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 rounded-xl ${ca.bgColor} flex items-center justify-center text-white shadow-md`}>
-                                  <Icon size={18} strokeWidth={2.5} />
-                              </div>
-                              <div>
-                                  <div className={`text-sm font-black uppercase tracking-wider ${ca.color}`}>{ca.label}</div>
-                                  <div className="text-lg font-bold text-slate-800 leading-none">{ca.description}</div>
+                  return (
+                      <div key={ca.id} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden group">
+                          
+                          {/* CA Header */}
+                          <div className="p-6 pb-2 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                  <div className={`w-10 h-10 rounded-xl ${ca.bgColor} flex items-center justify-center text-white shadow-md`}>
+                                      <Icon size={18} strokeWidth={2.5} />
+                                  </div>
+                                  <div>
+                                      <div className={`text-sm font-black uppercase tracking-wider ${ca.color}`}>{ca.label}</div>
+                                      <div className="text-lg font-bold text-slate-800 leading-none">{ca.description}</div>
+                                  </div>
                               </div>
                           </div>
-                      </div>
 
-                      {/* Activities Body */}
-                      <div className="p-6 flex-1 flex flex-col gap-4">
-                          <div className="flex flex-wrap gap-2 content-start min-h-[100px]">
-                              {ca.activities.length === 0 && (
-                                  <div className="w-full h-20 flex items-center justify-center text-slate-300 text-sm italic border-2 border-dashed border-slate-100 rounded-xl">
-                                      Aucune activité
-                                  </div>
-                              )}
-                              
-                              {ca.activities.map(act => {
-                                  const isEditing = editingActivity?.name === act && editingActivity?.caId === ca.id;
+                          {/* Activities Body */}
+                          <div className="p-6 flex-1 flex flex-col gap-4">
+                              <div className="flex flex-col gap-2 min-h-[100px]">
+                                  {ca.activities.length === 0 && (
+                                      <div className="w-full h-20 flex items-center justify-center text-slate-300 text-sm italic border-2 border-dashed border-slate-100 rounded-xl">
+                                          Aucune activité
+                                      </div>
+                                  )}
                                   
-                                  if (isEditing) {
+                                  {ca.activities.map(act => {
+                                      const isEditing = editingActivity?.name === act && editingActivity?.caId === ca.id;
+                                      
+                                      // Trouve l'app utilisée
+                                      const engineId = kernel.engineRegistry[act] || 'STANDARD';
+                                      const usedApp = kernel.registeredApps.find(app => app.id === engineId) || kernel.registeredApps[0];
+                                      const AppIcon = IconMap[usedApp.icon] || Box;
+
+                                      if (isEditing) {
+                                          return (
+                                              <div key={act} className="flex flex-col gap-2 bg-slate-50 border border-indigo-200 rounded-xl p-3 animate-enter shadow-lg shadow-indigo-100/50">
+                                                  <label className="text-[10px] font-bold text-indigo-400 uppercase">Nom de l'activité</label>
+                                                  <input 
+                                                    autoFocus
+                                                    value={editValue}
+                                                    onChange={(e) => setEditValue(e.target.value)}
+                                                    className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-800"
+                                                  />
+                                                  
+                                                  <label className="text-[10px] font-bold text-indigo-400 uppercase mt-1">Logiciel / Outil</label>
+                                                  <select
+                                                    value={editEngineId}
+                                                    onChange={(e) => setEditEngineId(e.target.value)}
+                                                    className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
+                                                  >
+                                                      {kernel.registeredApps.map(app => (
+                                                          <option key={app.id} value={app.id}>{app.name} {app.isSystem ? '(Système)' : ''}</option>
+                                                      ))}
+                                                  </select>
+
+                                                  <div className="flex gap-2 mt-2">
+                                                      <button onClick={saveEditActivity} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-indigo-700">Enregistrer</button>
+                                                      <button onClick={() => setEditingActivity(null)} className="px-3 bg-white border border-slate-200 text-slate-500 py-2 rounded-lg text-xs font-bold hover:bg-slate-50">Annuler</button>
+                                                  </div>
+                                              </div>
+                                          );
+                                      }
+
                                       return (
-                                          <div key={act} className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 animate-enter">
-                                              <input 
-                                                autoFocus
-                                                value={editValue}
-                                                onChange={(e) => setEditValue(e.target.value)}
-                                                onBlur={saveEdit}
-                                                onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                                                className="bg-white border border-indigo-300 rounded px-2 py-1 text-sm outline-none w-32 shadow-sm text-slate-800 font-medium"
-                                              />
+                                          <div 
+                                            key={act} 
+                                            className="group/badge flex items-center justify-between p-2 pr-3 bg-slate-50 border border-slate-100 hover:border-slate-200 rounded-xl transition-all cursor-pointer"
+                                            onClick={() => startEditActivity(ca.id, act)}
+                                          >
+                                              <div className="flex items-center gap-3">
+                                                  <span className="text-sm font-bold text-slate-700 pl-1">{act}</span>
+                                              </div>
+
+                                              <div className="flex items-center gap-2">
+                                                  {/* Badge Logiciel */}
+                                                  <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${usedApp.color.replace('text-', 'bg-').replace('600', '100')} ${usedApp.color}`}>
+                                                      <AppIcon size={12} />
+                                                      {usedApp.name}
+                                                  </div>
+                                                  
+                                                  <button 
+                                                    onClick={(e) => { e.stopPropagation(); startEditActivity(ca.id, act); }}
+                                                    className="p-1.5 text-slate-300 hover:text-indigo-500 transition opacity-0 group-hover/badge:opacity-100"
+                                                  >
+                                                      <Edit3 size={14} />
+                                                  </button>
+
+                                                  <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteActivity(ca.id, act);
+                                                    }}
+                                                    className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition opacity-0 group-hover/badge:opacity-100"
+                                                  >
+                                                      <X size={14} />
+                                                  </button>
+                                              </div>
                                           </div>
                                       );
-                                  }
-
-                                  return (
-                                      <div 
-                                        key={act} 
-                                        className="group/badge inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-100 hover:border-slate-300 transition-all cursor-pointer"
-                                        onClick={() => startEdit(ca.id, act)}
-                                      >
-                                          {act}
-                                          <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDelete(ca.id, act);
-                                            }}
-                                            className="w-5 h-5 flex items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                                          >
-                                              <X size={12} strokeWidth={3} />
-                                          </button>
-                                      </div>
-                                  );
-                              })}
+                                  })}
+                              </div>
                           </div>
-                      </div>
 
-                      {/* Quick Add Footer */}
-                      <div className="p-4 bg-slate-50/50 border-t border-slate-100">
-                          <div className="relative">
-                               <input 
-                                  value={inputValue}
-                                  onChange={(e) => handleInputChange(ca.id, e.target.value)}
-                                  onKeyDown={(e) => e.key === 'Enter' && handleAdd(ca.id)}
-                                  placeholder={`Ajouter au ${ca.label}...`}
-                                  className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition shadow-sm"
-                               />
-                               <button 
-                                  onClick={() => handleAdd(ca.id)}
-                                  disabled={!inputValue}
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-slate-900 text-white rounded-lg hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100 transition shadow-sm"
-                               >
-                                   <Plus size={16} />
-                               </button>
+                          {/* Quick Add Footer */}
+                          <div className="p-4 bg-slate-50/50 border-t border-slate-100">
+                              <div className="relative">
+                                  <input 
+                                      value={inputValue}
+                                      onChange={(e) => handleInputChange(ca.id, e.target.value)}
+                                      onKeyDown={(e) => e.key === 'Enter' && handleAddActivity(ca.id)}
+                                      placeholder={`Ajouter au ${ca.label}...`}
+                                      className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition shadow-sm"
+                                  />
+                                  <button 
+                                      onClick={() => handleAddActivity(ca.id)}
+                                      disabled={!inputValue}
+                                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-slate-900 text-white rounded-lg hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100 transition shadow-sm"
+                                  >
+                                      <Plus size={16} />
+                                  </button>
+                              </div>
                           </div>
-                      </div>
 
+                      </div>
+                  );
+              })}
+          </div>
+      )}
+
+      {/* === TAB 2: APPS LIBRARY === */}
+      {activeTab === 'APPS' && (
+          <div className="space-y-6 animate-enter">
+              
+              {/* Add New App */}
+              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-6 items-end">
+                  <div className="flex-1 w-full space-y-2">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Nom du logiciel</label>
+                      <input 
+                          value={newAppInput.name}
+                          onChange={(e) => setNewAppInput(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Ex: Mon Chrono Vitesse..."
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
                   </div>
-              );
-          })}
-      </div>
+                  <div className="flex-1 w-full space-y-2">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Basé sur le module</label>
+                      <select 
+                          value={newAppInput.base}
+                          onChange={(e) => setNewAppInput(prev => ({ ...prev, base: e.target.value as any }))}
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                          <option value="STANDARD">Standard (Obs. Critériée)</option>
+                          <option value="CHRONO_PLIJADOUR">Chrono Plijadour (Natation)</option>
+                          <option value="MINGUEN">Minguen Orientation (CO)</option>
+                      </select>
+                  </div>
+                  <button 
+                      onClick={handleAddApp}
+                      disabled={!newAppInput.name}
+                      className="px-8 py-3.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 shadow-lg shadow-indigo-200"
+                  >
+                      <Plus size={20} className="inline mr-2" /> Déclarer
+                  </button>
+              </div>
+
+              {/* Apps Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {kernel.registeredApps.map(app => {
+                      const AppIcon = IconMap[app.icon] || Box;
+                      return (
+                          <div key={app.id} className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
+                               
+                               <div className="flex items-start justify-between mb-4">
+                                   <div className={`p-3 rounded-2xl ${app.color.replace('text-', 'bg-').replace('600', '100')} ${app.color}`}>
+                                       <AppIcon size={24} />
+                                   </div>
+                                   {app.isSystem ? (
+                                       <div className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-widest rounded-full border border-slate-200">
+                                           Système
+                                       </div>
+                                   ) : (
+                                       <button 
+                                          onClick={() => handleDeleteApp(app.id)}
+                                          className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition"
+                                       >
+                                          <Trash2 size={20} />
+                                       </button>
+                                   )}
+                               </div>
+
+                               <h3 className="text-xl font-bold text-slate-800 mb-2">{app.name}</h3>
+                               <p className="text-sm text-slate-500 mb-6 min-h-[40px]">{app.description}</p>
+
+                               <div className="flex items-center gap-2 text-xs font-medium text-slate-400 bg-slate-50 p-3 rounded-xl">
+                                   <Cpu size={14} /> 
+                                   Moteur : <span className="font-mono text-slate-600">{app.componentKey}</span>
+                               </div>
+
+                          </div>
+                      );
+                  })}
+              </div>
+
+              {/* Info Box */}
+              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex gap-3 text-blue-800 text-sm">
+                  <AlertCircle size={20} className="shrink-0" />
+                  <p>
+                      <strong>Déclarer un logiciel</strong> permet de créer des configurations spécifiques. 
+                      Par exemple, vous pouvez créer deux versions de "Minguen" avec des noms différents ("CO Collège" et "CO Lycée") 
+                      pour mieux organiser vos activités. À l'avenir, cela permettra de sauvegarder des réglages par logiciel.
+                  </p>
+              </div>
+
+          </div>
+      )}
+
     </div>
   );
 };
