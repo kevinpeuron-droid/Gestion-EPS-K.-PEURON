@@ -144,6 +144,10 @@ export const ActivityAdmin: React.FC<Props> = ({ kernel }) => {
                                       // Trouve l'app utilisée
                                       const engineId = kernel.engineRegistry[act] || 'STANDARD';
                                       const usedApp = kernel.registeredApps.find(app => app.id === engineId) || kernel.registeredApps[0];
+                                      
+                                      // Safety check
+                                      if (!usedApp) return null;
+
                                       const AppIcon = IconMap[usedApp.icon] || Box;
 
                                       if (isEditing) {

@@ -28,6 +28,19 @@ export interface ActivityCategory {
   activities: string[];
 }
 
+// --- DATA BRIDGE ---
+
+// Structure générique renvoyée par les moteurs
+export interface ActivityResult {
+  id: string;          // UUID du résultat
+  studentId: string;   // Lien élève
+  studentName: string; // Snapshot du nom (si ID perdu)
+  activityId: string;  // Sport concerné
+  engineId: string;    // Moteur ayant généré la donnée
+  date: string;        // ISO Date
+  data: Record<string, any>; // Payload flexible (ex: { bestTime: 45000, avg: 47000, nbReps: 4 })
+}
+
 // État minimal du Kernel
 export interface KernelState {
   currentActivity: string;

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType, EngineId, AppDefinition } from '../types';
+import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType, EngineId, AppDefinition, ActivityResult } from '../types';
 
 // --- CONFIGURATION INITIALE STANDARD ---
 const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
@@ -92,6 +92,10 @@ const MOCK_STUDENTS: Student[] = [
 ];
 
 export const useEPSKernel = (sessionId?: string) => {
+  // --- SESSION KEY (Le Cœur du Reset) ---
+  // Cette clé force le re-montage des composants externes quand on change de séance
+  const [sessionKey, setSessionKey] = useState<number>(Date.now());
+
   // --- CONFIGURATION DYNAMIQUE ---
   const [caDefinitions, setCaDefinitions] = useState<ActivityCategory[]>(() => {
     const saved = localStorage.getItem('eps_ca_definitions');
@@ -103,16 +107,24 @@ export const useEPSKernel = (sessionId?: string) => {
     return INITIAL_CA_DEFINITIONS;
   });
 
-  // Registre des Apps (Logiciels disponibles)
   const [registeredApps, setRegisteredApps] = useState<AppDefinition[]>(() => {
     const saved = localStorage.getItem('eps_registered_apps');
-    return saved ? JSON.parse(saved) : INITIAL_APPS;
+    let loaded = saved ? JSON.parse(saved) : INITIAL_APPS;
+    if (!Array.isArray(loaded) || loaded.length === 0) {
+      loaded = INITIAL_APPS;
+    }
+    return loaded;
   });
 
-  // Registre des Moteurs (Lien Activité -> App ID)
   const [engineRegistry, setEngineRegistry] = useState<Record<string, EngineId>>(() => {
     const saved = localStorage.getItem('eps_engine_registry');
     return saved ? JSON.parse(saved) : {};
+  });
+
+  // --- ACTIVITY RESULTS (DATA BRIDGE) ---
+  const [activityResults, setActivityResults] = useState<ActivityResult[]>(() => {
+    const saved = localStorage.getItem('eps_activity_results');
+    return saved ? JSON.parse(saved) : [];
   });
 
   // Persistance
@@ -127,6 +139,10 @@ export const useEPSKernel = (sessionId?: string) => {
   useEffect(() => {
     localStorage.setItem('eps_engine_registry', JSON.stringify(engineRegistry));
   }, [engineRegistry]);
+
+  useEffect(() => {
+    localStorage.setItem('eps_activity_results', JSON.stringify(activityResults));
+  }, [activityResults]);
 
   // --- STATE PRINCIPAL ---
   const [currentActivity, setCurrentActivity] = useState<string>(() => localStorage.getItem('eps_activity') || 'Demi-fond');
@@ -159,14 +175,12 @@ export const useEPSKernel = (sessionId?: string) => {
     return caDefinitions.find(ca => ca.activities.includes(currentActivity)) || caDefinitions[0];
   }, [currentActivity, caDefinitions]);
 
-  // Récupère l'AppDefinition complète en fonction de l'activité courante
   const currentApp = useMemo(() => {
     const appId = engineRegistry[currentActivity] || 'STANDARD';
-    return registeredApps.find(app => app.id === appId) || registeredApps[0];
+    return registeredApps.find(app => app.id === appId) || registeredApps[0] || INITIAL_APPS[0];
   }, [currentActivity, engineRegistry, registeredApps]);
 
-  // Pour la compatibilité avec CAModule (qui attend juste l'ID ou le componentKey)
-  const currentEngineId = useMemo(() => currentApp.componentKey, [currentApp]);
+  const currentEngineId = useMemo(() => currentApp?.componentKey || 'STANDARD', [currentApp]);
 
   const filteredStudents = useMemo(() => {
     if (!currentSession.group) return students;
@@ -179,6 +193,25 @@ export const useEPSKernel = (sessionId?: string) => {
   useEffect(() => {
       setCurrentSession(prev => ({ ...prev, activity: currentActivity, ca: currentCA.id }));
   }, [currentActivity, currentCA]);
+
+  // --- RESET GLOBAL (NOUVELLE SEANCE) ---
+  const startNewSession = () => {
+    if (window.confirm("Voulez-vous vraiment démarrer une nouvelle séance ?\n\nCela effacera les observations en cours et réinitialisera les outils (Chrono, etc.).")) {
+      // 1. Clear runtime observations
+      setObservations([]);
+      
+      // 2. Reset session status but keep config
+      setCurrentSession(prev => ({
+        ...prev,
+        date: new Date().toISOString(),
+        showSessionToStudents: false,
+        showObservationToStudents: false
+      }));
+
+      // 3. Update Key -> Forces re-mount of external apps (Chrono reset)
+      setSessionKey(Date.now());
+    }
+  };
 
   // --- ACTIONS ---
   const selectActivity = (activity: string) => {
@@ -199,7 +232,6 @@ export const useEPSKernel = (sessionId?: string) => {
   const updateCriteria = (list: Criterion[]) => setCriteria(list);
   
   // --- GESTION DES ACTIVITÉS (CRUD) ---
-  
   const addActivity = (caId: CAType, activityName: string) => {
       if (!activityName.trim()) return;
       setCaDefinitions(prev => prev.map(ca => {
@@ -211,22 +243,29 @@ export const useEPSKernel = (sessionId?: string) => {
   };
 
   const deleteActivity = (caId: CAType, activityName: string) => {
+      // 1. Supprimer de la liste
       setCaDefinitions(prev => prev.map(ca => {
           if (ca.id === caId) {
               return { ...ca, activities: ca.activities.filter(a => a !== activityName) };
           }
           return ca;
       }));
+      
+      // 2. Switch d'activité si c'était celle en cours
       if (currentActivity === activityName) {
           const ca = caDefinitions.find(c => c.id === caId);
           const remaining = ca?.activities.filter(a => a !== activityName) || [];
           if (remaining.length > 0) selectActivity(remaining[0]);
           else selectActivity(caDefinitions[0].activities[0]);
       }
-      // Clean registry
+
+      // 3. Nettoyer le registre moteur
       const newRegistry = { ...engineRegistry };
       delete newRegistry[activityName];
       setEngineRegistry(newRegistry);
+
+      // 4. Nettoyer les données archivées (Data Cleanup)
+      setActivityResults(prev => prev.filter(r => r.activityId !== activityName));
   };
 
   const renameActivity = (caId: CAType, oldName: string, newName: string) => {
@@ -237,22 +276,21 @@ export const useEPSKernel = (sessionId?: string) => {
           }
           return ca;
       }));
-      
       const newRegistry = { ...engineRegistry };
       if (newRegistry[oldName]) {
         newRegistry[newName] = newRegistry[oldName];
         delete newRegistry[oldName];
         setEngineRegistry(newRegistry);
       }
-
+      // Update archived data names
+      setActivityResults(prev => prev.map(r => r.activityId === oldName ? { ...r, activityId: newName } : r));
+      
       if (currentActivity === oldName) selectActivity(newName);
   };
 
   const setActivityEngine = (activityName: string, engineId: EngineId) => {
     setEngineRegistry(prev => ({ ...prev, [activityName]: engineId }));
   };
-
-  // --- GESTION DES APPS (LOGICIELS) ---
 
   const registerApp = (name: string, componentKey: AppDefinition['componentKey']) => {
     const newApp: AppDefinition = {
@@ -268,8 +306,7 @@ export const useEPSKernel = (sessionId?: string) => {
   };
 
   const deleteApp = (appId: string) => {
-    setRegisteredApps(prev => prev.filter(app => app.id !== appId || app.isSystem)); // Protect system apps
-    // Reset any activity using this app to STANDARD
+    setRegisteredApps(prev => prev.filter(app => app.id !== appId || app.isSystem));
     const newRegistry = { ...engineRegistry };
     let changed = false;
     Object.keys(newRegistry).forEach(act => {
@@ -281,8 +318,41 @@ export const useEPSKernel = (sessionId?: string) => {
     if(changed) setEngineRegistry(newRegistry);
   };
 
+  // --- DATA BRIDGE LOGIC ---
+  const saveResult = (payload: Omit<ActivityResult, 'id' | 'date'>) => {
+      setActivityResults(prev => {
+          const today = new Date().toISOString().split('T')[0];
+          const existingIndex = prev.findIndex(r => 
+              r.studentId === payload.studentId && 
+              r.activityId === payload.activityId &&
+              r.date.startsWith(today)
+          );
+
+          const newResult: ActivityResult = {
+              id: existingIndex >= 0 ? prev[existingIndex].id : crypto.randomUUID(),
+              date: existingIndex >= 0 ? prev[existingIndex].date : new Date().toISOString(),
+              ...payload
+          };
+
+          if (existingIndex >= 0) {
+              const newResults = [...prev];
+              newResults[existingIndex] = newResult;
+              return newResults;
+          } else {
+              return [...prev, newResult];
+          }
+      });
+  };
+
+  const getSynthesis = () => {
+    const currentActivityResults = activityResults.filter(r => r.activityId === currentActivity);
+    currentActivityResults.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return currentActivityResults;
+  };
+
   return {
     // État Global
+    sessionKey, // NEW
     caDefinitions,
     currentActivity,
     currentCA,
@@ -292,6 +362,7 @@ export const useEPSKernel = (sessionId?: string) => {
     isSidebarCollapsed,
     engineRegistry,
     registeredApps,
+    activityResults,
     
     // Données
     students,
@@ -300,12 +371,15 @@ export const useEPSKernel = (sessionId?: string) => {
     currentSession,
     observations,
     criteria,
-    stats: {}, // Placeholder
+    stats: {},
     
     // Actions UI
     setTab: setActiveTab,
     selectActivity,
     toggleSidebar,
+    
+    // Actions Session
+    startNewSession, // NEW
     
     // Actions Données
     addObservation,
@@ -322,6 +396,10 @@ export const useEPSKernel = (sessionId?: string) => {
     registerApp,
     deleteApp,
     
+    // Data Bridge
+    saveResult,
+    getSynthesis,
+
     // Compatibilité
     caList: caDefinitions,
     addSport: () => {},
