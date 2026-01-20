@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Timer, Compass, Music, Swords, HeartPulse, 
   Activity, ChevronRight, PanelLeftClose, PanelLeftOpen, 
-  Settings, UserCircle, LogOut
+  Settings, UserCircle
 } from 'lucide-react';
 import { ActivityCategory } from '../types';
 
@@ -100,7 +100,12 @@ export const Sidebar: React.FC<Props> = ({
                         className={`transition-colors duration-300 ${isActiveContext ? ca.color : 'text-slate-500 group-hover:text-slate-300'}`} 
                         strokeWidth={isActiveContext ? 2.5 : 2}
                       />
-                      {!isCollapsed && <span className="font-semibold text-[15px] tracking-tight">{ca.shortLabel}</span>}
+                      {!isCollapsed && (
+                        <div className="text-left">
+                           <div className="font-bold text-[15px] tracking-tight leading-none">{ca.label}</div>
+                           <div className="text-[11px] text-slate-500 font-medium mt-0.5">{ca.description}</div>
+                        </div>
+                      )}
                     </div>
                   </button>
 
@@ -141,10 +146,10 @@ export const Sidebar: React.FC<Props> = ({
            <button 
               onClick={onOpenSettings}
               className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl hover:bg-white/5 transition group`}
-              title="Administration"
+              title="Gérer les activités"
            >
               <Settings size={20} className="text-slate-400 group-hover:text-white transition-colors" />
-              {!isCollapsed && <span className="ml-3 text-sm font-medium text-slate-400 group-hover:text-white">Administration</span>}
+              {!isCollapsed && <span className="ml-3 text-sm font-medium text-slate-400 group-hover:text-white">Gérer les activités</span>}
            </button>
 
            {/* User Profile */}

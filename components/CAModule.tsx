@@ -41,7 +41,9 @@ export const CAModule: React.FC<Props> = ({ activity, ca, activeTab, onTabChange
           <div>
             <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${theme.border} ${theme.light} mb-4`}>
               <span className={`w-2 h-2 rounded-full ${theme.bg} animate-pulse`}></span>
-              <span className={`text-xs font-bold uppercase tracking-widest ${theme.text}`}>{ca.label}</span>
+              <span className={`text-xs font-bold uppercase tracking-widest ${theme.text}`}>
+                {ca.label} • {ca.description}
+              </span>
             </div>
             <h1 className="text-5xl font-black text-slate-900 tracking-tight leading-none">
               {activity}

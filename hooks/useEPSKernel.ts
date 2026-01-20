@@ -2,10 +2,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType } from '../types';
 
 // --- CONFIGURATION INITIALE STANDARD ---
+// Renommage des Labels (CA1...) et déplacement du thème dans 'description'
 const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
   { 
     id: 'CA1', 
-    label: 'Performance', 
+    label: 'CA1', 
+    description: 'Performance',
     shortLabel: 'Perf', 
     iconName: 'Timer', 
     color: 'text-cyan-500', 
@@ -14,7 +16,8 @@ const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
   },
   { 
     id: 'CA2', 
-    label: 'Adaptation', 
+    label: 'CA2', 
+    description: 'Adaptation',
     shortLabel: 'Nature', 
     iconName: 'Compass', 
     color: 'text-emerald-500', 
@@ -23,7 +26,8 @@ const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
   },
   { 
     id: 'CA3', 
-    label: 'Artistique', 
+    label: 'CA3', 
+    description: 'Artistique',
     shortLabel: 'Arts', 
     iconName: 'Music', 
     color: 'text-fuchsia-500', 
@@ -32,7 +36,8 @@ const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
   },
   { 
     id: 'CA4', 
-    label: 'Opposition', 
+    label: 'CA4', 
+    description: 'Opposition',
     shortLabel: 'Duel', 
     iconName: 'Swords', 
     color: 'text-orange-500', 
@@ -41,7 +46,8 @@ const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
   },
   { 
     id: 'CA5', 
-    label: 'Entretien', 
+    label: 'CA5', 
+    description: 'Entretien',
     shortLabel: 'Forme', 
     iconName: 'HeartPulse', 
     color: 'text-rose-500', 
@@ -60,7 +66,15 @@ export const useEPSKernel = (sessionId?: string) => {
   // --- CONFIGURATION DYNAMIQUE ---
   const [caDefinitions, setCaDefinitions] = useState<ActivityCategory[]>(() => {
     const saved = localStorage.getItem('eps_ca_definitions');
-    return saved ? JSON.parse(saved) : INITIAL_CA_DEFINITIONS;
+    if (saved) {
+      // Migration simple si le format a changé (ajout de description si manquant)
+      const parsed = JSON.parse(saved);
+      if (parsed.length > 0 && !parsed[0].description) {
+        return INITIAL_CA_DEFINITIONS; // Reset si vieux format
+      }
+      return parsed;
+    }
+    return INITIAL_CA_DEFINITIONS;
   });
 
   // Persistance

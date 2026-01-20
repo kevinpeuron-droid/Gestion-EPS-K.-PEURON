@@ -7,11 +7,12 @@ export type CAType = 'CA1' | 'CA2' | 'CA3' | 'CA4' | 'CA5';
 
 export interface ActivityCategory {
   id: CAType;
-  label: string;
-  shortLabel: string;
-  iconName: string; // Lucide icon name
-  color: string;    // Text color class
-  bgColor: string;  // Background/Accent color class
+  label: string;       // Ex: "CA1"
+  description: string; // Ex: "Performance"
+  shortLabel: string;  // Ex: "Perf"
+  iconName: string;    // Lucide icon name
+  color: string;       // Text color class
+  bgColor: string;     // Background/Accent color class
   activities: string[];
 }
 
