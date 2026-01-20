@@ -93,7 +93,6 @@ const MOCK_STUDENTS: Student[] = [
 
 export const useEPSKernel = (sessionId?: string) => {
   // --- SESSION KEY (Le Cœur du Reset) ---
-  // Cette clé force le re-montage des composants externes quand on change de séance
   const [sessionKey, setSessionKey] = useState<number>(Date.now());
 
   // --- CONFIGURATION DYNAMIQUE ---
@@ -127,39 +126,33 @@ export const useEPSKernel = (sessionId?: string) => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Persistance
-  useEffect(() => {
-    localStorage.setItem('eps_ca_definitions', JSON.stringify(caDefinitions));
-  }, [caDefinitions]);
-
-  useEffect(() => {
-    localStorage.setItem('eps_registered_apps', JSON.stringify(registeredApps));
-  }, [registeredApps]);
-
-  useEffect(() => {
-    localStorage.setItem('eps_engine_registry', JSON.stringify(engineRegistry));
-  }, [engineRegistry]);
-
-  useEffect(() => {
-    localStorage.setItem('eps_activity_results', JSON.stringify(activityResults));
-  }, [activityResults]);
-
   // --- STATE PRINCIPAL ---
   const [currentActivity, setCurrentActivity] = useState<string>(() => localStorage.getItem('eps_activity') || 'Demi-fond');
   const [activeTab, setActiveTab] = useState<ModuleTab>('DATA');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
   // Données
-  const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
+  const [students, setStudents] = useState<Student[]>(() => {
+      const saved = localStorage.getItem('eps_students');
+      return saved ? JSON.parse(saved) : MOCK_STUDENTS;
+  });
+
   const [observations, setObservations] = useState<Observation[]>([]);
   const [criteria, setCriteria] = useState<Criterion[]>([]);
   
+  // Persistance
+  useEffect(() => { localStorage.setItem('eps_ca_definitions', JSON.stringify(caDefinitions)); }, [caDefinitions]);
+  useEffect(() => { localStorage.setItem('eps_registered_apps', JSON.stringify(registeredApps)); }, [registeredApps]);
+  useEffect(() => { localStorage.setItem('eps_engine_registry', JSON.stringify(engineRegistry)); }, [engineRegistry]);
+  useEffect(() => { localStorage.setItem('eps_activity_results', JSON.stringify(activityResults)); }, [activityResults]);
+  useEffect(() => { localStorage.setItem('eps_students', JSON.stringify(students)); }, [students]);
+
   // Session Actuelle
   const [currentSession, setCurrentSession] = useState<Session>({
     id: sessionId || 'default',
     activity: currentActivity,
     ca: 'CA1',
-    group: '2NDE 1',
+    group: students.length > 0 ? students[0].group : '2NDE 1',
     date: new Date().toISOString(),
     status: 'PLANNING',
     timeline: [],
@@ -187,33 +180,73 @@ export const useEPSKernel = (sessionId?: string) => {
     return students.filter(s => s.group === currentSession.group);
   }, [students, currentSession.group]);
 
-  const availableGroups = useMemo(() => Array.from(new Set(students.map(s => s.group))), [students]);
+  const availableGroups = useMemo(() => Array.from(new Set(students.map(s => s.group))).sort(), [students]);
 
   // Sync Activity to Session
   useEffect(() => {
       setCurrentSession(prev => ({ ...prev, activity: currentActivity, ca: currentCA.id }));
   }, [currentActivity, currentCA]);
 
-  // --- RESET GLOBAL (NOUVELLE SEANCE) ---
+  // --- IMPORT & GESTION ÉLÈVES ---
+
+  // Fusionne une nouvelle liste d'élèves avec l'existante
+  const mergeStudents = (newStudents: Student[]) => {
+      setStudents(prev => {
+          const merged = [...prev];
+          let updatedCount = 0;
+          let addedCount = 0;
+
+          newStudents.forEach(newS => {
+              // Détection doublon (Nom + Prénom + Groupe) insensible à la casse
+              const existingIndex = merged.findIndex(s => 
+                  s.lastName.toLowerCase() === newS.lastName.toLowerCase() &&
+                  s.firstName.toLowerCase() === newS.firstName.toLowerCase() &&
+                  s.group === newS.group
+              );
+
+              if (existingIndex >= 0) {
+                  // Update (garde l'ID existant pour ne pas casser les obs)
+                  merged[existingIndex] = { ...newS, id: merged[existingIndex].id };
+                  updatedCount++;
+              } else {
+                  // Add
+                  merged.push(newS);
+                  addedCount++;
+              }
+          });
+          
+          alert(`${addedCount} élèves ajoutés, ${updatedCount} mis à jour.`);
+          return merged;
+      });
+  };
+
+  const deleteStudent = (id: string) => {
+    if(confirm("Supprimer cet élève ?")) {
+      setStudents(prev => prev.filter(s => s.id !== id));
+    }
+  };
+
+  const clearAllStudents = () => {
+    if(confirm("ATTENTION : Cela va supprimer TOUS les élèves de la base. Confirmer ?")) {
+      setStudents([]);
+    }
+  };
+
+  // --- RESET GLOBAL ---
   const startNewSession = () => {
     if (window.confirm("Voulez-vous vraiment démarrer une nouvelle séance ?\n\nCela effacera les observations en cours et réinitialisera les outils (Chrono, etc.).")) {
-      // 1. Clear runtime observations
       setObservations([]);
-      
-      // 2. Reset session status but keep config
       setCurrentSession(prev => ({
         ...prev,
         date: new Date().toISOString(),
         showSessionToStudents: false,
         showObservationToStudents: false
       }));
-
-      // 3. Update Key -> Forces re-mount of external apps (Chrono reset)
       setSessionKey(Date.now());
     }
   };
 
-  // --- ACTIONS ---
+  // --- ACTIONS UTILS ---
   const selectActivity = (activity: string) => {
     setCurrentActivity(activity);
     localStorage.setItem('eps_activity', activity);
@@ -228,10 +261,9 @@ export const useEPSKernel = (sessionId?: string) => {
   };
   
   const updateSession = (patch: Partial<Session>) => setCurrentSession(prev => ({ ...prev, ...patch }));
-  const importStudents = (list: Student[]) => setStudents(list);
   const updateCriteria = (list: Criterion[]) => setCriteria(list);
   
-  // --- GESTION DES ACTIVITÉS (CRUD) ---
+  // --- ADMIN ACTIONS ---
   const addActivity = (caId: CAType, activityName: string) => {
       if (!activityName.trim()) return;
       setCaDefinitions(prev => prev.map(ca => {
@@ -243,28 +275,21 @@ export const useEPSKernel = (sessionId?: string) => {
   };
 
   const deleteActivity = (caId: CAType, activityName: string) => {
-      // 1. Supprimer de la liste
       setCaDefinitions(prev => prev.map(ca => {
           if (ca.id === caId) {
               return { ...ca, activities: ca.activities.filter(a => a !== activityName) };
           }
           return ca;
       }));
-      
-      // 2. Switch d'activité si c'était celle en cours
       if (currentActivity === activityName) {
           const ca = caDefinitions.find(c => c.id === caId);
           const remaining = ca?.activities.filter(a => a !== activityName) || [];
           if (remaining.length > 0) selectActivity(remaining[0]);
           else selectActivity(caDefinitions[0].activities[0]);
       }
-
-      // 3. Nettoyer le registre moteur
       const newRegistry = { ...engineRegistry };
       delete newRegistry[activityName];
       setEngineRegistry(newRegistry);
-
-      // 4. Nettoyer les données archivées (Data Cleanup)
       setActivityResults(prev => prev.filter(r => r.activityId !== activityName));
   };
 
@@ -282,9 +307,7 @@ export const useEPSKernel = (sessionId?: string) => {
         delete newRegistry[oldName];
         setEngineRegistry(newRegistry);
       }
-      // Update archived data names
       setActivityResults(prev => prev.map(r => r.activityId === oldName ? { ...r, activityId: newName } : r));
-      
       if (currentActivity === oldName) selectActivity(newName);
   };
 
@@ -318,7 +341,7 @@ export const useEPSKernel = (sessionId?: string) => {
     if(changed) setEngineRegistry(newRegistry);
   };
 
-  // --- DATA BRIDGE LOGIC ---
+  // --- DATA BRIDGE ---
   const saveResult = (payload: Omit<ActivityResult, 'id' | 'date'>) => {
       setActivityResults(prev => {
           const today = new Date().toISOString().split('T')[0];
@@ -327,13 +350,11 @@ export const useEPSKernel = (sessionId?: string) => {
               r.activityId === payload.activityId &&
               r.date.startsWith(today)
           );
-
           const newResult: ActivityResult = {
               id: existingIndex >= 0 ? prev[existingIndex].id : crypto.randomUUID(),
               date: existingIndex >= 0 ? prev[existingIndex].date : new Date().toISOString(),
               ...payload
           };
-
           if (existingIndex >= 0) {
               const newResults = [...prev];
               newResults[existingIndex] = newResult;
@@ -351,8 +372,7 @@ export const useEPSKernel = (sessionId?: string) => {
   };
 
   return {
-    // État Global
-    sessionKey, // NEW
+    sessionKey,
     caDefinitions,
     currentActivity,
     currentCA,
@@ -363,44 +383,31 @@ export const useEPSKernel = (sessionId?: string) => {
     engineRegistry,
     registeredApps,
     activityResults,
-    
-    // Données
     students,
     filteredStudents,
     availableGroups,
     currentSession,
     observations,
     criteria,
-    stats: {},
-    
-    // Actions UI
     setTab: setActiveTab,
     selectActivity,
     toggleSidebar,
-    
-    // Actions Session
-    startNewSession, // NEW
-    
-    // Actions Données
+    startNewSession,
     addObservation,
     updateSession,
-    importStudents,
+    importStudents: mergeStudents, // Renamed for export
+    deleteStudent,
+    clearAllStudents,
     updateCriteria,
     applyCAPreset: (id: string) => console.log('preset', id),
-    
-    // Actions Admin
     addActivity,
     deleteActivity,
     renameActivity,
     setActivityEngine,
     registerApp,
     deleteApp,
-    
-    // Data Bridge
     saveResult,
     getSynthesis,
-
-    // Compatibilité
     caList: caDefinitions,
     addSport: () => {},
     removeSport: () => {}

@@ -60,7 +60,15 @@ export interface Student {
   lastName: string;
   firstName: string;
   gender: 'M' | 'F';
-  group: string;
+  group: string; // Classe (ex: 2NDE 1)
+}
+
+// Mapping pour l'import CSV
+export interface CSVMapping {
+  lastNameIndex: number;
+  firstNameIndex: number;
+  genderIndex: number;
+  groupIndex: number;
 }
 
 export type UIMode = 'BINARY' | 'MULTI_CHOICE' | 'STEPPER' | 'CHRONO' | 'SCALE_GRADIENT' | 'RATING';

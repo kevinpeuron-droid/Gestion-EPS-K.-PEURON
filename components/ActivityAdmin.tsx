@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useEPSKernel } from '../hooks/useEPSKernel';
 import { CAType, AppDefinition } from '../types';
+import { StudentImport } from './StudentImport';
 import { 
   Trash2, Plus, Edit3, Shield, Check,
   Timer, Compass, Swords, Music, HeartPulse, Activity, X,
-  Cpu, Gamepad2, Settings, LayoutGrid, AppWindow, Box, AlertCircle
+  Cpu, Gamepad2, Settings, LayoutGrid, AppWindow, Box, AlertCircle, Users
 } from 'lucide-react';
 
 interface Props {
@@ -17,7 +18,7 @@ const IconMap: Record<string, React.ElementType> = {
 };
 
 export const ActivityAdmin: React.FC<Props> = ({ kernel }) => {
-  const [activeTab, setActiveTab] = useState<'ACTIVITIES' | 'APPS'>('ACTIVITIES');
+  const [activeTab, setActiveTab] = useState<'ACTIVITIES' | 'APPS' | 'STUDENTS'>('ACTIVITIES');
   
   // -- STATES ACTIVITIES --
   const [newActivityInputs, setNewActivityInputs] = useState<Record<string, string>>({});
@@ -91,13 +92,19 @@ export const ActivityAdmin: React.FC<Props> = ({ kernel }) => {
                 onClick={() => setActiveTab('ACTIVITIES')}
                 className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'ACTIVITIES' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:bg-slate-200/50'}`}
               >
-                  <LayoutGrid size={18} /> Activités Sportives
+                  <LayoutGrid size={18} /> Activités
               </button>
               <button 
                 onClick={() => setActiveTab('APPS')}
                 className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'APPS' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:bg-slate-200/50'}`}
               >
-                  <AppWindow size={18} /> Bibliothèque Logiciels
+                  <AppWindow size={18} /> Logiciels
+              </button>
+              <button 
+                onClick={() => setActiveTab('STUDENTS')}
+                className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'STUDENTS' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:bg-slate-200/50'}`}
+              >
+                  <Users size={18} /> Élèves
               </button>
           </div>
           
@@ -319,17 +326,73 @@ export const ActivityAdmin: React.FC<Props> = ({ kernel }) => {
                       );
                   })}
               </div>
+          </div>
+      )}
 
-              {/* Info Box */}
-              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex gap-3 text-blue-800 text-sm">
-                  <AlertCircle size={20} className="shrink-0" />
-                  <p>
-                      <strong>Déclarer un logiciel</strong> permet de créer des configurations spécifiques. 
-                      Par exemple, vous pouvez créer deux versions de "Minguen" avec des noms différents ("CO Collège" et "CO Lycée") 
-                      pour mieux organiser vos activités. À l'avenir, cela permettra de sauvegarder des réglages par logiciel.
-                  </p>
+      {/* === TAB 3: STUDENTS (NEW) === */}
+      {activeTab === 'STUDENTS' && (
+          <div className="space-y-8 animate-enter">
+              {/* COMPOSANT D'IMPORT */}
+              <StudentImport onImport={kernel.importStudents} />
+              
+              {/* LISTE ACTUELLE */}
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                      <div>
+                          <h3 className="text-lg font-bold text-slate-800">Base Élèves ({kernel.students.length})</h3>
+                          <p className="text-sm text-slate-500">Liste globale disponible pour toutes les activités.</p>
+                      </div>
+                      <button 
+                        onClick={kernel.clearAllStudents}
+                        className="text-red-500 text-sm font-bold hover:text-red-700 px-4 py-2 hover:bg-red-50 rounded-lg transition"
+                      >
+                          <Trash2 size={16} className="inline mr-2"/> Tout Supprimer
+                      </button>
+                  </div>
+                  
+                  <div className="max-h-[500px] overflow-y-auto">
+                      <table className="w-full text-left text-sm">
+                          <thead className="bg-white sticky top-0 text-slate-400 font-bold uppercase text-xs tracking-wider border-b border-slate-100">
+                              <tr>
+                                  <th className="p-4">Nom</th>
+                                  <th className="p-4">Prénom</th>
+                                  <th className="p-4">Classe</th>
+                                  <th className="p-4 text-center">Sexe</th>
+                                  <th className="p-4 text-right">Actions</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50">
+                              {kernel.students.map(s => (
+                                  <tr key={s.id} className="hover:bg-slate-50">
+                                      <td className="p-4 font-bold text-slate-700">{s.lastName}</td>
+                                      <td className="p-4 text-slate-600">{s.firstName}</td>
+                                      <td className="p-4"><span className="px-2 py-1 bg-slate-100 rounded text-xs font-bold text-slate-500">{s.group}</span></td>
+                                      <td className="p-4 text-center">
+                                          <span className={`w-6 h-6 inline-flex items-center justify-center rounded-full text-xs font-bold ${s.gender === 'M' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}`}>
+                                              {s.gender}
+                                          </span>
+                                      </td>
+                                      <td className="p-4 text-right">
+                                          <button 
+                                            onClick={() => kernel.deleteStudent(s.id)}
+                                            className="text-slate-300 hover:text-red-500 p-1"
+                                          >
+                                              <X size={16} />
+                                          </button>
+                                      </td>
+                                  </tr>
+                              ))}
+                              {kernel.students.length === 0 && (
+                                  <tr>
+                                      <td colSpan={5} className="p-8 text-center text-slate-400 italic">
+                                          Aucun élève dans la base. Utilisez le module d'import ci-dessus.
+                                      </td>
+                                  </tr>
+                              )}
+                          </tbody>
+                      </table>
+                  </div>
               </div>
-
           </div>
       )}
 
