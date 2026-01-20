@@ -5,9 +5,6 @@ export type ModuleTab = 'DATA' | 'CONFIG' | 'SESSION';
 
 export type CAType = 'CA1' | 'CA2' | 'CA3' | 'CA4' | 'CA5';
 
-// NOUVEAU : Types de modules disponibles
-export type AppModuleType = 'STANDARD' | 'PLIJADOUR' | 'MINGUEN' | 'CUSTOM_HTML';
-
 export interface ActivityCategory {
   id: CAType;
   label: string;
@@ -28,7 +25,7 @@ export interface KernelState {
 
 // --- APP VIEWS ---
 
-export type ViewState = 'DASHBOARD' | 'CLASSES' | 'SESSION_PLANNER' | 'STUDENT_MODE' | 'TEACHER_MOBILE';
+export type ViewState = 'DASHBOARD' | 'CLASSES' | 'SESSION_PLANNER' | 'STUDENT_MODE' | 'TEACHER_MOBILE' | 'SETTINGS';
 
 // --- DOMAIN ENTITIES ---
 
@@ -40,7 +37,7 @@ export interface Student {
   group: string;
 }
 
-export type UIMode = 'BINARY' | 'MULTI_CHOICE' | 'STEPPER' | 'CHRONO' | 'SCALE_GRADIENT' | 'RATING' | 'TIMER_HOLD' | 'HEATMAP_ZONE';
+export type UIMode = 'BINARY' | 'MULTI_CHOICE' | 'STEPPER' | 'CHRONO' | 'SCALE_GRADIENT' | 'RATING';
 
 export interface CriterionConfig {
   unit?: string;
@@ -110,40 +107,4 @@ export interface StudentStats {
   totalObservations: number;
   reliabilityIndex: number;
   criteriaStats: Record<string, CriteriaStat>;
-}
-
-// --- PLIJADOUR SPECIFIC ---
-export interface SwimmerData {
-    studentId: string;
-    targetDistance: number;
-    targetReps: number;
-    checkpoints: Record<number, number>; // distance -> temps relatif (ms)
-    restStartGlobalTime: number | null; // Temps global au début du repos
-    restDurations: number[]; // Durée des repos terminés
-    currentRep: number;
-    repStartGlobalTime: number; // Temps global au début de la répétition
-    finished: boolean;
-}
-
-// --- MINGUEN ORIENTATION SPECIFIC ---
-
-export type BaliseLevel = 'N1' | 'N2' | 'N3';
-
-export interface BaliseDefinition {
-  id: string;
-  number: string;
-  level: BaliseLevel;
-}
-
-export interface OrientationResult {
-  status: 'SUCCESS' | 'FAILURE' | 'SEARCHING' | null;
-  startTime: number | null; // Timestamp start search
-  endTime: number | null; // Timestamp end search
-  duration: number | null; // Saved duration in seconds
-  errors: number;
-}
-
-// Structure stockée par élève/groupe : baliseId -> Result
-export interface OrientationStudentData {
-  [baliseId: string]: OrientationResult;
 }

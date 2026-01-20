@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType, AppModuleType } from '../types';
+import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType } from '../types';
 
-// --- CONFIGURATION INITIALE (Fallback) ---
+// --- CONFIGURATION INITIALE STANDARD ---
 const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
   { 
     id: 'CA1', 
@@ -10,7 +10,7 @@ const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
     iconName: 'Timer', 
     color: 'text-cyan-500', 
     bgColor: 'bg-cyan-500', 
-    activities: ['Demi-fond', 'Natation', 'Vitesse', 'Musculation'] 
+    activities: ['Demi-fond', 'Natation', 'Vitesse'] 
   },
   { 
     id: 'CA2', 
@@ -19,7 +19,7 @@ const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
     iconName: 'Compass', 
     color: 'text-emerald-500', 
     bgColor: 'bg-emerald-500', 
-    activities: ['Course Orientation', 'Escalade', 'Savoir Nager'] 
+    activities: ['Course Orientation', 'Escalade'] 
   },
   { 
     id: 'CA3', 
@@ -28,7 +28,7 @@ const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
     iconName: 'Music', 
     color: 'text-fuchsia-500', 
     bgColor: 'bg-fuchsia-500', 
-    activities: ['Danse', 'Acrosport', 'Cirque'] 
+    activities: ['Danse', 'Acrosport'] 
   },
   { 
     id: 'CA4', 
@@ -37,7 +37,7 @@ const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
     iconName: 'Swords', 
     color: 'text-orange-500', 
     bgColor: 'bg-orange-500', 
-    activities: ['Badminton', 'Tennis de Table', 'Volley-ball', 'Boxe'] 
+    activities: ['Badminton', 'Tennis de Table'] 
   },
   { 
     id: 'CA5', 
@@ -46,24 +46,14 @@ const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
     iconName: 'HeartPulse', 
     color: 'text-rose-500', 
     bgColor: 'bg-rose-500', 
-    activities: ['Step', 'Yoga', 'Course en Durée'] 
+    activities: ['Step', 'Yoga'] 
   }
 ];
 
-// REGISTRE DES MOTEURS D'APPLICATION
-const INITIAL_MODULE_REGISTRY: Record<string, AppModuleType> = {
-    'Natation': 'PLIJADOUR',
-    'Demi-fond': 'PLIJADOUR',
-    'Vitesse': 'PLIJADOUR',
-    'Course Orientation': 'MINGUEN',
-};
-
-// Mock Data
+// Mock Data Minimal
 const MOCK_STUDENTS: Student[] = [
   { id: '1', lastName: 'DUPONT', firstName: 'Jean', gender: 'M', group: '2NDE 1' },
   { id: '2', lastName: 'MARTIN', firstName: 'Sophie', gender: 'F', group: '2NDE 1' },
-  { id: '3', lastName: 'DURAND', firstName: 'Paul', gender: 'M', group: '2NDE 2' },
-  { id: '4', lastName: 'LEFEBVRE', firstName: 'Julie', gender: 'F', group: '2NDE 2' },
 ];
 
 export const useEPSKernel = (sessionId?: string) => {
@@ -73,27 +63,17 @@ export const useEPSKernel = (sessionId?: string) => {
     return saved ? JSON.parse(saved) : INITIAL_CA_DEFINITIONS;
   });
 
-  // --- REGISTRE DES MODULES ---
-  const [moduleRegistry, setModuleRegistry] = useState<Record<string, AppModuleType>>(() => {
-      const saved = localStorage.getItem('eps_module_registry');
-      return saved ? JSON.parse(saved) : INITIAL_MODULE_REGISTRY;
-  });
-
   // Persistance
   useEffect(() => {
     localStorage.setItem('eps_ca_definitions', JSON.stringify(caDefinitions));
   }, [caDefinitions]);
 
-  useEffect(() => {
-      localStorage.setItem('eps_module_registry', JSON.stringify(moduleRegistry));
-  }, [moduleRegistry]);
-
   // --- STATE PRINCIPAL ---
-  const [currentActivity, setCurrentActivity] = useState<string>(() => localStorage.getItem('eps_activity') || 'Badminton');
+  const [currentActivity, setCurrentActivity] = useState<string>(() => localStorage.getItem('eps_activity') || 'Demi-fond');
   const [activeTab, setActiveTab] = useState<ModuleTab>('DATA');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
-  // Données Pédagogiques
+  // Données
   const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [criteria, setCriteria] = useState<Criterion[]>([]);
@@ -119,11 +99,6 @@ export const useEPSKernel = (sessionId?: string) => {
     return caDefinitions.find(ca => ca.activities.includes(currentActivity)) || caDefinitions[0];
   }, [currentActivity, caDefinitions]);
 
-  // DÉTECTION DU MOTEUR
-  const currentModuleType = useMemo<AppModuleType>(() => {
-      return moduleRegistry[currentActivity] || 'STANDARD';
-  }, [currentActivity, moduleRegistry]);
-
   const filteredStudents = useMemo(() => {
     if (!currentSession.group) return students;
     return students.filter(s => s.group === currentSession.group);
@@ -131,7 +106,7 @@ export const useEPSKernel = (sessionId?: string) => {
 
   const availableGroups = useMemo(() => Array.from(new Set(students.map(s => s.group))), [students]);
 
-  // Synchronisation Activité -> Session
+  // Sync Activity to Session
   useEffect(() => {
       setCurrentSession(prev => ({ ...prev, activity: currentActivity, ca: currentCA.id }));
   }, [currentActivity, currentCA]);
@@ -140,7 +115,7 @@ export const useEPSKernel = (sessionId?: string) => {
   const selectActivity = (activity: string) => {
     setCurrentActivity(activity);
     localStorage.setItem('eps_activity', activity);
-    setActiveTab('DATA'); // Reset tab quand on change de sport
+    setActiveTab('DATA');
   };
 
   const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
@@ -154,72 +129,43 @@ export const useEPSKernel = (sessionId?: string) => {
   const importStudents = (list: Student[]) => setStudents(list);
   const updateCriteria = (list: Criterion[]) => setCriteria(list);
   
-  // --- GESTION DES ACTIVITÉS & MOTEURS ---
+  // --- GESTION DES ACTIVITÉS (CRUD) ---
   
-  /**
-   * Ajoute une nouvelle activité à un Champ d'Apprentissage
-   * @param caId ID du CA (CA1, CA2...)
-   * @param activityName Nom du sport
-   * @param engineType Type de moteur (STANDARD, PLIJADOUR, MINGUEN)
-   */
-  const addActivity = (caId: CAType, activityName: string, engineType: AppModuleType = 'STANDARD') => {
-      // 1. Ajouter à la liste du CA
+  const addActivity = (caId: CAType, activityName: string) => {
+      if (!activityName.trim()) return;
       setCaDefinitions(prev => prev.map(ca => {
           if (ca.id === caId && !ca.activities.includes(activityName)) {
               return { ...ca, activities: [...ca.activities, activityName] };
           }
           return ca;
       }));
-      // 2. Enregistrer le moteur
-      setModuleRegistry(prev => ({ ...prev, [activityName]: engineType }));
-  };
-
-  const renameActivity = (caId: CAType, oldName: string, newName: string) => {
-      setCaDefinitions(prev => prev.map(ca => {
-          if (ca.id === caId) {
-              const newActivities = ca.activities.map(a => a === oldName ? newName : a);
-              return { ...ca, activities: newActivities };
-          }
-          return ca;
-      }));
-      
-      // Mettre à jour le registre
-      if (moduleRegistry[oldName]) {
-          const type = moduleRegistry[oldName];
-          setModuleRegistry(prev => {
-              const next = { ...prev, [newName]: type };
-              delete next[oldName];
-              return next;
-          });
-      }
-
-      if (currentActivity === oldName) {
-          selectActivity(newName);
-      }
   };
 
   const deleteActivity = (caId: CAType, activityName: string) => {
-      // 1. Retirer de la liste
       setCaDefinitions(prev => prev.map(ca => {
           if (ca.id === caId) {
               return { ...ca, activities: ca.activities.filter(a => a !== activityName) };
           }
           return ca;
       }));
-      // 2. Nettoyer le registre
-      setModuleRegistry(prev => {
-          const next = { ...prev };
-          delete next[activityName];
-          return next;
-      });
-      // 3. Fallback si on supprime l'activité courante
+      // Si on supprime l'activité courante, on bascule sur la première dispo
       if (currentActivity === activityName) {
-          selectActivity(caDefinitions[0].activities[0]);
+          const ca = caDefinitions.find(c => c.id === caId);
+          const remaining = ca?.activities.filter(a => a !== activityName) || [];
+          if (remaining.length > 0) selectActivity(remaining[0]);
+          else selectActivity(caDefinitions[0].activities[0]);
       }
   };
 
-  const updateActivityEngine = (activityName: string, type: AppModuleType) => {
-      setModuleRegistry(prev => ({ ...prev, [activityName]: type }));
+  const renameActivity = (caId: CAType, oldName: string, newName: string) => {
+      if (!newName.trim()) return;
+      setCaDefinitions(prev => prev.map(ca => {
+          if (ca.id === caId) {
+              return { ...ca, activities: ca.activities.map(a => a === oldName ? newName : a) };
+          }
+          return ca;
+      }));
+      if (currentActivity === oldName) selectActivity(newName);
   };
 
   return {
@@ -227,8 +173,6 @@ export const useEPSKernel = (sessionId?: string) => {
     caDefinitions,
     currentActivity,
     currentCA,
-    currentModuleType, // STANDARD | PLIJADOUR | MINGUEN
-    moduleRegistry,
     activeTab,
     isSidebarCollapsed,
     
@@ -239,7 +183,7 @@ export const useEPSKernel = (sessionId?: string) => {
     currentSession,
     observations,
     criteria,
-    stats: {},
+    stats: {}, // Placeholder
     
     // Actions UI
     setTab: setActiveTab,
@@ -253,11 +197,10 @@ export const useEPSKernel = (sessionId?: string) => {
     updateCriteria,
     applyCAPreset: (id: string) => console.log('preset', id),
     
-    // Actions Admin / Config
+    // Actions Admin
     addActivity,
-    renameActivity,
     deleteActivity,
-    updateActivityEngine,
+    renameActivity,
     
     // Compatibilité
     caList: caDefinitions,

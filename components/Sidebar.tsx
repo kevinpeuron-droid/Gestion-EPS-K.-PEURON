@@ -12,6 +12,7 @@ interface Props {
   onSelectActivity: (activity: string) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  onOpenSettings: () => void;
 }
 
 const IconMap: Record<string, React.ElementType> = {
@@ -23,7 +24,8 @@ export const Sidebar: React.FC<Props> = ({
   currentActivity, 
   onSelectActivity, 
   isCollapsed,
-  onToggleCollapse 
+  onToggleCollapse,
+  onOpenSettings
 }) => {
   const [expandedCA, setExpandedCA] = useState<string | null>(() => {
     const found = caDefinitions.find(ca => ca.activities.includes(currentActivity));
@@ -133,34 +135,37 @@ export const Sidebar: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* --- FOOTER (User Profile) --- */}
-        <div className="p-4 mt-auto border-t border-slate-800 bg-[#0B1120]">
-          {!isCollapsed ? (
-            <div className="flex items-center justify-between animate-enter">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center border border-slate-500/50">
-                  <UserCircle size={20} className="text-slate-300" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-white">Prof. EPS</div>
-                  <div className="text-[10px] text-slate-500">Lycée Jean Jaurès</div>
-                </div>
-              </div>
+        {/* --- FOOTER --- */}
+        <div className="p-4 mt-auto border-t border-slate-800 bg-[#0B1120] space-y-2">
+           {/* Admin Button */}
+           <button 
+              onClick={onOpenSettings}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl hover:bg-white/5 transition group`}
+              title="Administration"
+           >
+              <Settings size={20} className="text-slate-400 group-hover:text-white transition-colors" />
+              {!isCollapsed && <span className="ml-3 text-sm font-medium text-slate-400 group-hover:text-white">Administration</span>}
+           </button>
+
+           {/* User Profile */}
+           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} animate-enter pt-2 border-t border-white/5`}>
+              {!isCollapsed && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center border border-slate-500/50">
+                      <UserCircle size={18} className="text-slate-300" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white">Prof. EPS</div>
+                    </div>
+                  </div>
+              )}
               <button 
                 onClick={onToggleCollapse}
                 className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition"
               >
-                <PanelLeftClose size={18} />
+                {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
               </button>
             </div>
-          ) : (
-             <button 
-                onClick={onToggleCollapse}
-                className="w-full flex justify-center p-2 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition"
-              >
-                <PanelLeftOpen size={20} />
-              </button>
-          )}
         </div>
       </div>
     </aside>
