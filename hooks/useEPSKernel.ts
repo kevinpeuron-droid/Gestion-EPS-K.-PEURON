@@ -1,5 +1,6 @@
+
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType, EngineId, AppDefinition, ActivityResult, ActivityConfig } from '../types';
+import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType, EngineId, AppDefinition, ActivityResult, ActivityConfig, SharedResource } from '../types';
 
 // --- CONFIGURATION INITIALE STANDARD ---
 const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
@@ -85,14 +86,13 @@ const INITIAL_APPS: AppDefinition[] = [
   }
 ];
 
-// Mock Data Minimal
 const MOCK_STUDENTS: Student[] = [
   { id: '1', lastName: 'DUPONT', firstName: 'Jean', gender: 'M', group: '2NDE 1' },
   { id: '2', lastName: 'MARTIN', firstName: 'Sophie', gender: 'F', group: '2NDE 1' },
 ];
 
 export const useEPSKernel = (sessionId?: string) => {
-  // --- SESSION KEY (Le Cœur du Reset) ---
+  // --- SESSION KEY (Reset) ---
   const [sessionKey, setSessionKey] = useState<number>(Date.now());
 
   // --- CONFIGURATION DYNAMIQUE ---
@@ -120,13 +120,12 @@ export const useEPSKernel = (sessionId?: string) => {
     return saved ? JSON.parse(saved) : {};
   });
 
-  // NOUVEAU : Registre des configurations par activité (Liens)
   const [activityConfigRegistry, setActivityConfigRegistry] = useState<Record<string, ActivityConfig>>(() => {
     const saved = localStorage.getItem('eps_activity_config');
     return saved ? JSON.parse(saved) : {};
   });
 
-  // --- REGISTRES DE DONNÉES (PERSISTANCE PAR ACTIVITÉ) ---
+  // --- REGISTRES DONNÉES ---
   const [criteriaRegistry, setCriteriaRegistry] = useState<Record<string, Criterion[]>>(() => {
     const saved = localStorage.getItem('eps_criteria_registry');
     return saved ? JSON.parse(saved) : {};
@@ -137,27 +136,47 @@ export const useEPSKernel = (sessionId?: string) => {
     return saved ? JSON.parse(saved) : {};
   });
 
-  // --- ACTIVITY RESULTS (DATA BRIDGE) ---
+  // --- ACTIVITY RESULTS ---
   const [activityResults, setActivityResults] = useState<ActivityResult[]>(() => {
     const saved = localStorage.getItem('eps_activity_results');
     return saved ? JSON.parse(saved) : [];
   });
+
+  // --- SHARED RESOURCE (SYNC) ---
+  const [sharedResource, setSharedResourceState] = useState<SharedResource | null>(() => {
+    const saved = localStorage.getItem('eps_shared_resource');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  // Listener pour la synchronisation entre onglets (Prof -> Élève)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'eps_shared_resource') {
+        const newValue = e.newValue ? JSON.parse(e.newValue) : null;
+        setSharedResourceState(newValue);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  const setSharedResource = (resource: SharedResource) => {
+    setSharedResourceState(resource);
+    localStorage.setItem('eps_shared_resource', JSON.stringify(resource));
+  };
 
   // --- STATE PRINCIPAL ---
   const [currentActivity, setCurrentActivity] = useState<string>(() => localStorage.getItem('eps_activity') || 'Demi-fond');
   const [activeTab, setActiveTab] = useState<ModuleTab>('DATA');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
-  // Données
   const [students, setStudents] = useState<Student[]>(() => {
       const saved = localStorage.getItem('eps_students');
       return saved ? JSON.parse(saved) : MOCK_STUDENTS;
   });
 
-  // Observables Runtime
   const [observations, setObservations] = useState<Observation[]>([]);
   
-  // State Active Context
   const [criteria, setCriteria] = useState<Criterion[]>([]);
   const [currentSession, setCurrentSession] = useState<Session>({
     id: sessionId || 'default',
@@ -181,8 +200,6 @@ export const useEPSKernel = (sessionId?: string) => {
   useEffect(() => { localStorage.setItem('eps_activity_config', JSON.stringify(activityConfigRegistry)); }, [activityConfigRegistry]);
   useEffect(() => { localStorage.setItem('eps_activity_results', JSON.stringify(activityResults)); }, [activityResults]);
   useEffect(() => { localStorage.setItem('eps_students', JSON.stringify(students)); }, [students]);
-  
-  // Save Registries
   useEffect(() => { localStorage.setItem('eps_criteria_registry', JSON.stringify(criteriaRegistry)); }, [criteriaRegistry]);
   useEffect(() => { localStorage.setItem('eps_session_registry', JSON.stringify(sessionRegistry)); }, [sessionRegistry]);
 
@@ -199,7 +216,6 @@ export const useEPSKernel = (sessionId?: string) => {
 
   const currentEngineId = useMemo(() => currentApp?.componentKey || 'STANDARD', [currentApp]);
   
-  // NOUVEAU : Config de l'activité courante
   const currentActivityConfig = useMemo(() => {
       return activityConfigRegistry[currentActivity] || {};
   }, [currentActivity, activityConfigRegistry]);
@@ -213,20 +229,16 @@ export const useEPSKernel = (sessionId?: string) => {
 
   // --- ACTIONS CRITIQUES ---
 
-  // Chargement des données contextuelles lors du changement d'activité
   const loadActivityContext = useCallback((activity: string, caId: CAType) => {
-      // 1. Charger les critères
       const savedCriteria = criteriaRegistry[activity] || [];
       setCriteria(savedCriteria);
 
-      // 2. Charger ou initier la session
       const savedSessionPartial = sessionRegistry[activity] || {};
       
       setCurrentSession(prev => ({
           ...prev,
           activity: activity,
           ca: caId,
-          // Merge saved data, fallback to defaults
           timeline: savedSessionPartial.timeline || [],
           variables: savedSessionPartial.variables || { simplify: '', complexify: '' },
           safetyAlert: savedSessionPartial.safetyAlert || '',
@@ -236,28 +248,21 @@ export const useEPSKernel = (sessionId?: string) => {
       }));
   }, [criteriaRegistry, sessionRegistry]);
 
-  // Initial load
   useEffect(() => {
      loadActivityContext(currentActivity, currentCA.id);
-     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount
+  }, []); 
 
   const selectActivity = (activity: string) => {
-    // Trouver le CA de cette activité
     const foundCA = caDefinitions.find(ca => ca.activities.includes(activity)) || caDefinitions[0];
-    
     setCurrentActivity(activity);
     localStorage.setItem('eps_activity', activity);
     setActiveTab('DATA');
-    
-    // Charger le contexte
     loadActivityContext(activity, foundCA.id);
   };
 
   const updateSession = (patch: Partial<Session>) => {
       setCurrentSession(prev => {
           const updated = { ...prev, ...patch };
-          // Persist to registry
           setSessionRegistry(reg => ({
               ...reg,
               [prev.activity]: {
@@ -281,7 +286,6 @@ export const useEPSKernel = (sessionId?: string) => {
       }));
   };
 
-  // NOUVEAU : Mise à jour de la config (Liens)
   const updateActivityConfig = (activityName: string, config: ActivityConfig) => {
       setActivityConfigRegistry(prev => ({
           ...prev,
@@ -289,7 +293,6 @@ export const useEPSKernel = (sessionId?: string) => {
       }));
   };
 
-  // --- IMPORT & GESTION ÉLÈVES ---
   const mergeStudents = (newStudents: Student[]) => {
       setStudents(prev => {
           const merged = [...prev];
@@ -324,12 +327,10 @@ export const useEPSKernel = (sessionId?: string) => {
     if(confirm("ATTENTION : Cela va supprimer TOUS les élèves de la base. Confirmer ?")) setStudents([]);
   };
 
-  // --- RESET GLOBAL ---
   const startNewSession = () => {
-    if (window.confirm("Voulez-vous vraiment démarrer une nouvelle séance ?\n\nCela effacera les observations en cours et réinitialisera les outils.")) {
+    if (window.confirm("Voulez-vous vraiment démarrer une nouvelle séance ?")) {
       setObservations([]);
       setSessionKey(Date.now());
-      // On ne reset PAS la configuration (criteria, session planner), seulement le runtime
     }
   };
 
@@ -338,7 +339,6 @@ export const useEPSKernel = (sessionId?: string) => {
       setObservations(prev => [...prev, newObs]);
   };
   
-  // --- ADMIN ACTIONS ---
   const addActivity = (caId: CAType, activityName: string) => {
       if (!activityName.trim()) return;
       setCaDefinitions(prev => prev.map(ca => {
@@ -383,7 +383,6 @@ export const useEPSKernel = (sessionId?: string) => {
         setEngineRegistry(newRegistry);
       }
       
-      // Migrate Config Registry
       const newConfigRegistry = { ...activityConfigRegistry };
       if (newConfigRegistry[oldName]) {
           newConfigRegistry[newName] = newConfigRegistry[oldName];
@@ -391,7 +390,6 @@ export const useEPSKernel = (sessionId?: string) => {
           setActivityConfigRegistry(newConfigRegistry);
       }
 
-      // Migrate Data Registries
       if (criteriaRegistry[oldName]) {
           setCriteriaRegistry(prev => {
               const next = { ...prev, [newName]: prev[oldName] };
@@ -466,7 +464,7 @@ export const useEPSKernel = (sessionId?: string) => {
     sessionKey,
     caDefinitions,
     currentActivity,
-    currentActivityConfig, // Export de la config
+    currentActivityConfig,
     currentCA,
     currentEngineId,
     currentApp,
@@ -481,6 +479,7 @@ export const useEPSKernel = (sessionId?: string) => {
     currentSession,
     observations,
     criteria,
+    sharedResource, // EXPORTED
     setTab: setActiveTab,
     selectActivity,
     toggleSidebar,
@@ -491,7 +490,7 @@ export const useEPSKernel = (sessionId?: string) => {
     deleteStudent,
     clearAllStudents,
     updateCriteria,
-    updateActivityConfig, // Export de la fonction d'update
+    updateActivityConfig,
     applyCAPreset: (id: string) => console.log('preset', id),
     addActivity,
     deleteActivity,
@@ -501,6 +500,7 @@ export const useEPSKernel = (sessionId?: string) => {
     deleteApp,
     saveResult,
     getSynthesis,
+    setSharedResource, // EXPORTED ACTION
     caList: caDefinitions,
     addSport: () => {},
     removeSport: () => {}

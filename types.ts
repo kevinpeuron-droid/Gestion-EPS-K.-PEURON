@@ -33,6 +33,18 @@ export interface ActivityConfig {
   observationLink?: string; // URL vers la fiche d'observation (Sheet, Form, PDF)
 }
 
+// --- SHARE BRIDGE (NOUVEAU) ---
+
+export type ShareType = 'APP' | 'SESSION_DOC' | 'OBSERVATION_DOC' | 'WAITING';
+
+export interface SharedResource {
+  type: ShareType;
+  activityName: string;
+  engineId?: string; // Si type === 'APP'
+  url?: string;      // Si type === 'SESSION_DOC' ou 'OBSERVATION_DOC'
+  timestamp: number; // Pour forcer le refresh
+}
+
 // --- DATA BRIDGE ---
 
 // Structure générique renvoyée par les moteurs
@@ -56,7 +68,7 @@ export interface KernelState {
 
 // --- APP VIEWS ---
 
-export type ViewState = 'DASHBOARD' | 'CLASSES' | 'SESSION_PLANNER' | 'STUDENT_MODE' | 'TEACHER_MOBILE' | 'SETTINGS';
+export type ViewState = 'DASHBOARD' | 'CLASSES' | 'SESSION_PLANNER' | 'SETTINGS';
 
 // --- DOMAIN ENTITIES ---
 
