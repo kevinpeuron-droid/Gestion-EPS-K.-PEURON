@@ -125,15 +125,15 @@ export const useEPSKernel = (sessionId?: string) => {
     return saved ? JSON.parse(saved) : {};
   });
 
-  // --- REGISTRES DONNÉES INTERNES (OBSERVATION & SÉANCE) ---
+  // --- REGISTRES DONNÉES INTERNES ---
   
-  // 1. CRITÈRES D'OBSERVATION (Internal Grids)
+  // 1. CRITÈRES D'OBSERVATION (observationGrids)
   const [criteriaRegistry, setCriteriaRegistry] = useState<Record<string, Criterion[]>>(() => {
     const saved = localStorage.getItem('eps_criteria_registry');
     return saved ? JSON.parse(saved) : {};
   });
 
-  // 2. CONTENU DE SÉANCE (Internal Content)
+  // 2. CONTENU DE SÉANCE (sessionContents)
   const [sessionContentRegistry, setSessionContentRegistry] = useState<Record<string, SessionContent>>(() => {
     const saved = localStorage.getItem('eps_session_contents');
     return saved ? JSON.parse(saved) : {};
