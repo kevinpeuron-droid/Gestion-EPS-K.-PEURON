@@ -125,20 +125,21 @@ export const useEPSKernel = (sessionId?: string) => {
     return saved ? JSON.parse(saved) : {};
   });
 
-  // --- REGISTRES DONNÉES INTERNES ---
+  // --- REGISTRES DONNÉES INTERNES (OBSERVATION & SÉANCE) ---
   
-  // 1. CRITÈRES D'OBSERVATION (observationGrids)
+  // 1. CRITÈRES D'OBSERVATION (Internal Grids)
   const [criteriaRegistry, setCriteriaRegistry] = useState<Record<string, Criterion[]>>(() => {
     const saved = localStorage.getItem('eps_criteria_registry');
     return saved ? JSON.parse(saved) : {};
   });
 
-  // 2. CONTENU DE SÉANCE (sessionContents)
+  // 2. CONTENU DE SÉANCE (Internal Content)
   const [sessionContentRegistry, setSessionContentRegistry] = useState<Record<string, SessionContent>>(() => {
     const saved = localStorage.getItem('eps_session_contents');
     return saved ? JSON.parse(saved) : {};
   });
 
+  // 3. META-DONNÉES SÉANCE (Timeline, Variables, etc.)
   const [sessionRegistry, setSessionRegistry] = useState<Record<string, Partial<Session>>>(() => {
     const saved = localStorage.getItem('eps_session_registry');
     return saved ? JSON.parse(saved) : {};
@@ -185,6 +186,7 @@ export const useEPSKernel = (sessionId?: string) => {
 
   const [observations, setObservations] = useState<Observation[]>([]);
   
+  // États dérivés courants (chargés via loadActivityContext)
   const [criteria, setCriteria] = useState<Criterion[]>([]);
   const [currentSession, setCurrentSession] = useState<Session>({
     id: sessionId || 'default',
@@ -269,6 +271,7 @@ export const useEPSKernel = (sessionId?: string) => {
       }));
   }, [criteriaRegistry, sessionRegistry, sessionContentRegistry]);
 
+  // Initial load
   useEffect(() => {
      loadActivityContext(currentActivity, currentCA.id);
   }, []); 
@@ -418,41 +421,24 @@ export const useEPSKernel = (sessionId?: string) => {
           }
           return ca;
       }));
-      const newRegistry = { ...engineRegistry };
-      if (newRegistry[oldName]) {
-        newRegistry[newName] = newRegistry[oldName];
-        delete newRegistry[oldName];
-        setEngineRegistry(newRegistry);
-      }
-      
-      const newConfigRegistry = { ...activityConfigRegistry };
-      if (newConfigRegistry[oldName]) {
-          newConfigRegistry[newName] = newConfigRegistry[oldName];
-          delete newConfigRegistry[oldName];
-          setActivityConfigRegistry(newConfigRegistry);
-      }
+      // Migrate Registries
+      const registriesToMigrate = [
+          { get: engineRegistry, set: setEngineRegistry },
+          { get: activityConfigRegistry, set: setActivityConfigRegistry },
+          { get: criteriaRegistry, set: setCriteriaRegistry },
+          { get: sessionRegistry, set: setSessionRegistry },
+          { get: sessionContentRegistry, set: setSessionContentRegistry }
+      ];
 
-      if (criteriaRegistry[oldName]) {
-          setCriteriaRegistry(prev => {
-              const next = { ...prev, [newName]: prev[oldName] };
-              delete next[oldName];
-              return next;
-          });
-      }
-      if (sessionRegistry[oldName]) {
-          setSessionRegistry(prev => {
-              const next = { ...prev, [newName]: prev[oldName] };
-              delete next[oldName];
-              return next;
-          });
-      }
-      if (sessionContentRegistry[oldName]) {
-          setSessionContentRegistry(prev => {
-              const next = { ...prev, [newName]: prev[oldName] };
-              delete next[oldName];
-              return next;
-          });
-      }
+      registriesToMigrate.forEach(({ get, set }) => {
+          if (get[oldName]) {
+              set((prev: any) => {
+                  const next = { ...prev, [newName]: prev[oldName] };
+                  delete next[oldName];
+                  return next;
+              });
+          }
+      });
       
       if (currentActivity === oldName) selectActivity(newName);
   };
