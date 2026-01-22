@@ -125,14 +125,15 @@ export const useEPSKernel = (sessionId?: string) => {
     return saved ? JSON.parse(saved) : {};
   });
 
-  // --- REGISTRES DONNÉES ---
-  // Remplaçant de "observationGrids" implicite
+  // --- REGISTRES DONNÉES INTERNES ---
+  
+  // 1. CRITÈRES D'OBSERVATION (observationGrids)
   const [criteriaRegistry, setCriteriaRegistry] = useState<Record<string, Criterion[]>>(() => {
     const saved = localStorage.getItem('eps_criteria_registry');
     return saved ? JSON.parse(saved) : {};
   });
 
-  // Nouveau : Contenu textuel des séances
+  // 2. CONTENU DE SÉANCE (sessionContents)
   const [sessionContentRegistry, setSessionContentRegistry] = useState<Record<string, SessionContent>>(() => {
     const saved = localStorage.getItem('eps_session_contents');
     return saved ? JSON.parse(saved) : {};
@@ -242,11 +243,11 @@ export const useEPSKernel = (sessionId?: string) => {
   // --- ACTIONS CRITIQUES ---
 
   const loadActivityContext = useCallback((activity: string, caId: CAType) => {
-      // 1. Charger les critères
+      // 1. Charger les critères (INTERNE)
       const savedCriteria = criteriaRegistry[activity] || [];
       setCriteria(savedCriteria);
 
-      // 2. Charger le contenu textuel de séance
+      // 2. Charger le contenu textuel de séance (INTERNE)
       const savedContent = sessionContentRegistry[activity] || {
         objectives: '', warmUp: '', situations: '', assessment: ''
       };
@@ -298,7 +299,12 @@ export const useEPSKernel = (sessionId?: string) => {
       });
   };
 
-  // --- UPDATERS RESTAURÉS ---
+  // --- HELPERS INTERNES ---
+
+  const addCriterion = (activityId: string, criterion: Criterion) => {
+    const currentList = criteriaRegistry[activityId] || [];
+    updateObservationGrid(activityId, [...currentList, criterion]);
+  };
   
   const updateObservationGrid = (activityId: string, list: Criterion[]) => {
       setCriteria(list);
@@ -308,16 +314,19 @@ export const useEPSKernel = (sessionId?: string) => {
       }));
   };
   
-  // Alias pour compatibilité
+  // Alias pour compatibilité UI
   const updateCriteria = (list: Criterion[]) => updateObservationGrid(currentActivity, list);
 
-  const updateSessionContent = (activityId: string, content: SessionContent) => {
-      setCurrentSessionContent(content);
-      setSessionContentRegistry(reg => ({
-          ...reg,
-          [activityId]: content
-      }));
+  const saveSession = (activityId: string, content: SessionContent) => {
+    setCurrentSessionContent(content);
+    setSessionContentRegistry(reg => ({
+      ...reg,
+      [activityId]: content
+    }));
   };
+  
+  // Alias pour compatibilité UI
+  const updateSessionContent = (activityId: string, content: SessionContent) => saveSession(activityId, content);
 
   const updateActivityConfig = (activityName: string, config: ActivityConfig) => {
       setActivityConfigRegistry(prev => ({
@@ -517,7 +526,7 @@ export const useEPSKernel = (sessionId?: string) => {
     filteredStudents,
     availableGroups,
     currentSession,
-    currentSessionContent, // EXPORTED
+    currentSessionContent, 
     observations,
     criteria,
     sharedResource, 
@@ -531,8 +540,10 @@ export const useEPSKernel = (sessionId?: string) => {
     deleteStudent,
     clearAllStudents,
     updateCriteria,
-    updateObservationGrid, // EXPORTED
-    updateSessionContent, // EXPORTED
+    updateObservationGrid,
+    updateSessionContent,
+    saveSession, // Exported
+    addCriterion, // Exported
     updateActivityConfig,
     applyCAPreset: (id: string) => console.log('preset', id),
     addActivity,

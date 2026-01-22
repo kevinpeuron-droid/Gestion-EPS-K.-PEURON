@@ -169,4 +169,33 @@ export const ObservationModule: React.FC<Props> = ({ kernel }) => {
                             {/* Rendu Binaire */}
                             {crit.uiMode === 'BINARY' && (
                                 <div className="grid grid-cols-2 gap-4">
-                                    <button className="py-4 bg-emerald-500/20 border border-emerald-500 text-emerald-4
+                                    <button className="py-4 bg-emerald-500/20 border border-emerald-500 text-emerald-400 rounded-lg font-bold flex flex-col items-center justify-center gap-1">
+                                        <Check size={24}/> OUI
+                                    </button>
+                                    <button className="py-4 bg-red-500/20 border border-red-500 text-red-400 rounded-lg font-bold flex flex-col items-center justify-center gap-1">
+                                        <X size={24}/> NON
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Rendu Multi-Choix (CÔTE À CÔTE) */}
+                            {crit.uiMode === 'MULTI_CHOICE' && (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {crit.config.options?.map(opt => (
+                                        <button 
+                                            key={opt.value}
+                                            className="py-3 px-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-slate-200 rounded-lg text-sm font-bold transition"
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    </div>
+  );
+};
