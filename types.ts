@@ -28,6 +28,11 @@ export interface ActivityCategory {
   activities: string[];
 }
 
+export interface ActivityConfig {
+  sessionLink?: string;     // URL vers la fiche de séance (PDF, Doc, Drive)
+  observationLink?: string; // URL vers la fiche d'observation (Sheet, Form, PDF)
+}
+
 // --- DATA BRIDGE ---
 
 // Structure générique renvoyée par les moteurs

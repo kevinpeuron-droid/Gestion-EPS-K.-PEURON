@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType, EngineId, AppDefinition, ActivityResult } from '../types';
+import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType, EngineId, AppDefinition, ActivityResult, ActivityConfig } from '../types';
 
 // --- CONFIGURATION INITIALE STANDARD ---
 const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
@@ -120,8 +120,13 @@ export const useEPSKernel = (sessionId?: string) => {
     return saved ? JSON.parse(saved) : {};
   });
 
+  // NOUVEAU : Registre des configurations par activité (Liens)
+  const [activityConfigRegistry, setActivityConfigRegistry] = useState<Record<string, ActivityConfig>>(() => {
+    const saved = localStorage.getItem('eps_activity_config');
+    return saved ? JSON.parse(saved) : {};
+  });
+
   // --- REGISTRES DE DONNÉES (PERSISTANCE PAR ACTIVITÉ) ---
-  // Ces registres stockent les configurations de chaque activité (Critères + Contenu Séance)
   const [criteriaRegistry, setCriteriaRegistry] = useState<Record<string, Criterion[]>>(() => {
     const saved = localStorage.getItem('eps_criteria_registry');
     return saved ? JSON.parse(saved) : {};
@@ -173,6 +178,7 @@ export const useEPSKernel = (sessionId?: string) => {
   useEffect(() => { localStorage.setItem('eps_ca_definitions', JSON.stringify(caDefinitions)); }, [caDefinitions]);
   useEffect(() => { localStorage.setItem('eps_registered_apps', JSON.stringify(registeredApps)); }, [registeredApps]);
   useEffect(() => { localStorage.setItem('eps_engine_registry', JSON.stringify(engineRegistry)); }, [engineRegistry]);
+  useEffect(() => { localStorage.setItem('eps_activity_config', JSON.stringify(activityConfigRegistry)); }, [activityConfigRegistry]);
   useEffect(() => { localStorage.setItem('eps_activity_results', JSON.stringify(activityResults)); }, [activityResults]);
   useEffect(() => { localStorage.setItem('eps_students', JSON.stringify(students)); }, [students]);
   
@@ -192,6 +198,11 @@ export const useEPSKernel = (sessionId?: string) => {
   }, [currentActivity, engineRegistry, registeredApps]);
 
   const currentEngineId = useMemo(() => currentApp?.componentKey || 'STANDARD', [currentApp]);
+  
+  // NOUVEAU : Config de l'activité courante
+  const currentActivityConfig = useMemo(() => {
+      return activityConfigRegistry[currentActivity] || {};
+  }, [currentActivity, activityConfigRegistry]);
 
   const filteredStudents = useMemo(() => {
     if (!currentSession.group) return students;
@@ -270,6 +281,14 @@ export const useEPSKernel = (sessionId?: string) => {
       }));
   };
 
+  // NOUVEAU : Mise à jour de la config (Liens)
+  const updateActivityConfig = (activityName: string, config: ActivityConfig) => {
+      setActivityConfigRegistry(prev => ({
+          ...prev,
+          [activityName]: { ...(prev[activityName] || {}), ...config }
+      }));
+  };
+
   // --- IMPORT & GESTION ÉLÈVES ---
   const mergeStudents = (newStudents: Student[]) => {
       setStudents(prev => {
@@ -343,6 +362,10 @@ export const useEPSKernel = (sessionId?: string) => {
       const newRegistry = { ...engineRegistry };
       delete newRegistry[activityName];
       setEngineRegistry(newRegistry);
+      
+      const newConfigRegistry = { ...activityConfigRegistry };
+      delete newConfigRegistry[activityName];
+      setActivityConfigRegistry(newConfigRegistry);
   };
 
   const renameActivity = (caId: CAType, oldName: string, newName: string) => {
@@ -359,6 +382,15 @@ export const useEPSKernel = (sessionId?: string) => {
         delete newRegistry[oldName];
         setEngineRegistry(newRegistry);
       }
+      
+      // Migrate Config Registry
+      const newConfigRegistry = { ...activityConfigRegistry };
+      if (newConfigRegistry[oldName]) {
+          newConfigRegistry[newName] = newConfigRegistry[oldName];
+          delete newConfigRegistry[oldName];
+          setActivityConfigRegistry(newConfigRegistry);
+      }
+
       // Migrate Data Registries
       if (criteriaRegistry[oldName]) {
           setCriteriaRegistry(prev => {
@@ -434,6 +466,7 @@ export const useEPSKernel = (sessionId?: string) => {
     sessionKey,
     caDefinitions,
     currentActivity,
+    currentActivityConfig, // Export de la config
     currentCA,
     currentEngineId,
     currentApp,
@@ -458,6 +491,7 @@ export const useEPSKernel = (sessionId?: string) => {
     deleteStudent,
     clearAllStudents,
     updateCriteria,
+    updateActivityConfig, // Export de la fonction d'update
     applyCAPreset: (id: string) => console.log('preset', id),
     addActivity,
     deleteActivity,
