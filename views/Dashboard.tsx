@@ -10,6 +10,7 @@ export const Dashboard: React.FC<Props> = ({ kernel }) => {
   return (
     <div className="h-full rounded-[2.5rem] bg-white border border-white/60 shadow-xl shadow-slate-200/50 overflow-hidden relative">
         <CAModule 
+            kernel={kernel} // Passage du Kernel complet
             activity={kernel.currentActivity}
             ca={kernel.currentCA}
             activeTab={kernel.activeTab}
@@ -18,7 +19,7 @@ export const Dashboard: React.FC<Props> = ({ kernel }) => {
             currentApp={kernel.currentApp}
             onSaveResult={kernel.saveResult}
             results={kernel.getSynthesis()}
-            sessionKey={kernel.sessionKey} // Permet le reset
+            sessionKey={kernel.sessionKey}
         />
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useEPSKernel } from '../hooks/useEPSKernel';
-import { Save, AlertTriangle, Clock, Target, Box, Plus, Trash, Share2, Eye, EyeOff, Smartphone } from 'lucide-react';
+import { Save, AlertTriangle, Clock, Target, Box, Plus, Trash, Share2, Eye, EyeOff, Smartphone, CheckCircle } from 'lucide-react';
 import { SessionSequence } from '../types';
 
 interface Props {
@@ -14,7 +14,7 @@ export const SessionPlanner: React.FC<Props> = ({ kernel }) => {
   const [newSeqTitle, setNewSeqTitle] = useState('');
   const [newSeqType, setNewSeqType] = useState<SessionSequence['type']>('CORPS');
 
-  // PROTECTION : Timeline par défaut vide si undefined
+  // PROTECTION
   const timeline = currentSession.timeline || [];
   const variables = currentSession.variables || { simplify: '', complexify: '' };
 
@@ -37,7 +37,7 @@ export const SessionPlanner: React.FC<Props> = ({ kernel }) => {
   const totalTime = timeline.reduce((acc, curr) => acc + curr.durationMin, 0);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20 animate-fade-in">
+    <div className="max-w-6xl mx-auto space-y-6 pb-20 p-6">
       
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -46,9 +46,9 @@ export const SessionPlanner: React.FC<Props> = ({ kernel }) => {
             <p className="text-slate-500">Préparez votre intervention : <span className="font-semibold text-indigo-600">{currentSession.activity}</span> ({currentSession.group})</p>
          </div>
          <div className="flex items-center gap-3">
-             <button className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 shadow-sm transition font-medium text-sm">
-                 <Save size={18} /> Sauvegarder
-             </button>
+             <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-3 py-1 rounded-full flex items-center gap-1">
+                <CheckCircle size={12}/> Sauvegarde Auto
+             </span>
          </div>
       </div>
 
@@ -67,7 +67,7 @@ export const SessionPlanner: React.FC<Props> = ({ kernel }) => {
                  <input 
                     type="checkbox" 
                     className="hidden" 
-                    checked={currentSession.showSessionToStudents}
+                    checked={currentSession.showSessionToStudents || false}
                     onChange={(e) => updateSession({ showSessionToStudents: e.target.checked })}
                  />
                  <div className={`p-1.5 rounded-full ${currentSession.showSessionToStudents ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
@@ -80,7 +80,7 @@ export const SessionPlanner: React.FC<Props> = ({ kernel }) => {
                  <input 
                     type="checkbox" 
                     className="hidden" 
-                    checked={currentSession.showObservationToStudents}
+                    checked={currentSession.showObservationToStudents || false}
                     onChange={(e) => updateSession({ showObservationToStudents: e.target.checked })}
                  />
                  <div className={`p-1.5 rounded-full ${currentSession.showObservationToStudents ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-400'}`}>

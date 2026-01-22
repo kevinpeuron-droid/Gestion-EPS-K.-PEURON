@@ -1,31 +1,32 @@
 import React from 'react';
-import { ActivityCategory, ModuleTab, CAType, EngineId, AppDefinition, ActivityResult } from '../types';
+import { useEPSKernel } from '../hooks/useEPSKernel';
+import { ActivityCategory, ModuleTab, EngineId, AppDefinition, ActivityResult } from '../types';
 import { ExternalAppLoader } from './ExternalAppLoader';
-import { SynthesisModule } from './SynthesisModule'; // Nouveau
+import { SynthesisModule } from './SynthesisModule';
+import { ObservationSetup } from '../views/ObservationSetup'; // Import du composant Config
+import { SessionPlanner } from '../views/SessionPlanner'; // Import du composant Séance
 import { 
   BarChart3, Settings2, BookOpenCheck, 
-  Database, Plus, Layout, Zap, PenTool,
   Gamepad2, Cpu
 } from 'lucide-react';
 
+// Modif Props pour accepter le Kernel entier (plus simple pour le prop drilling vers les sous-modules)
 interface Props {
+  kernel: ReturnType<typeof useEPSKernel>;
+  // Props extraites pour compatibilité UI
   activity: string;
   ca: ActivityCategory;
   activeTab: ModuleTab;
   onTabChange: (tab: ModuleTab) => void;
   currentEngineId: EngineId;
   currentApp: AppDefinition;
-  
-  // Bridge Props
   onSaveResult: (res: Omit<ActivityResult, 'id' | 'date'>) => void;
   results: ActivityResult[];
-  
-  // Reset Prop
   sessionKey?: number;
 }
 
 // Configuration des Thèmes Visuels (Gradients & Accents)
-const THEMES: Record<CAType, { bg: string; text: string; light: string; border: string }> = {
+const THEMES: Record<string, { bg: string; text: string; light: string; border: string }> = {
   'CA1': { bg: 'bg-cyan-500', text: 'text-cyan-600', light: 'bg-cyan-50', border: 'border-cyan-200' },
   'CA2': { bg: 'bg-emerald-500', text: 'text-emerald-600', light: 'bg-emerald-50', border: 'border-emerald-200' },
   'CA3': { bg: 'bg-fuchsia-500', text: 'text-fuchsia-600', light: 'bg-fuchsia-50', border: 'border-fuchsia-200' },
@@ -34,6 +35,7 @@ const THEMES: Record<CAType, { bg: string; text: string; light: string; border: 
 };
 
 export const CAModule: React.FC<Props> = ({ 
+    kernel, // Nouveau prop
     activity, ca, activeTab, onTabChange, 
     currentEngineId, currentApp, 
     onSaveResult, results, sessionKey 
@@ -101,7 +103,6 @@ export const CAModule: React.FC<Props> = ({
         {/* VIEW: EXTERNAL APP */}
         {activeTab === 'APP' && (
            <div className="h-full w-full animate-enter">
-              {/* Le "key" force la réinitialisation complète du composant quand sessionKey change */}
               <ExternalAppLoader 
                   key={sessionKey} 
                   engineId={currentEngineId} 
@@ -111,7 +112,7 @@ export const CAModule: React.FC<Props> = ({
            </div>
         )}
 
-        {/* VIEW: DATA / SYNTHESIS (SMART DASHBOARD) */}
+        {/* VIEW: DATA / SYNTHESIS */}
         {activeTab === 'DATA' && (
            <div className="h-full w-full bg-white rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden">
               <SynthesisModule 
@@ -123,40 +124,17 @@ export const CAModule: React.FC<Props> = ({
            </div>
         )}
 
-        {/* VIEW: CONFIG & SESSION (Legacy Placeholders) */}
-        {(activeTab === 'CONFIG' || activeTab === 'SESSION') && (
-          <div className="h-full w-full bg-white rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden flex flex-col items-center justify-center text-center p-12 group">
-             {/* Decor */}
-             <div className={`
-                absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                w-[600px] h-[600px] ${theme.bg} opacity-[0.03] rounded-full blur-[120px] 
-                pointer-events-none transition-all duration-1000 group-hover:opacity-[0.05] z-0
-             `}></div>
+        {/* VIEW: CONFIG (ObservationSetup) */}
+        {activeTab === 'CONFIG' && (
+          <div className="h-full w-full overflow-y-auto animate-enter">
+              <ObservationSetup kernel={kernel} />
+          </div>
+        )}
 
-             <div className="relative z-10 max-w-lg mx-auto space-y-6 animate-enter">
-                {activeTab === 'CONFIG' && (
-                  <>
-                    <div className="w-24 h-24 mx-auto bg-slate-50 rounded-[1.5rem] flex items-center justify-center shadow-inner text-slate-300 mb-2">
-                       <Layout size={40} strokeWidth={1.5} />
-                    </div>
-                    <h2 className="text-3xl font-bold text-slate-900">Configuration</h2>
-                    <p className="text-slate-500 text-lg">
-                      Définissez les observables et les critères d'évaluation pour ce module.
-                    </p>
-                  </>
-                )}
-                {activeTab === 'SESSION' && (
-                  <>
-                    <div className="w-24 h-24 mx-auto bg-slate-50 rounded-[1.5rem] flex items-center justify-center shadow-inner text-slate-300 mb-2">
-                       <PenTool size={40} strokeWidth={1.5} />
-                    </div>
-                    <h2 className="text-3xl font-bold text-slate-900">Fiche de Séance</h2>
-                    <p className="text-slate-500 text-lg">
-                      Préparez votre intervention : Objectifs, Déroulement, Matériel.
-                    </p>
-                  </>
-                )}
-             </div>
+        {/* VIEW: SESSION (SessionPlanner) */}
+        {activeTab === 'SESSION' && (
+          <div className="h-full w-full overflow-y-auto animate-enter">
+             <SessionPlanner kernel={kernel} />
           </div>
         )}
 

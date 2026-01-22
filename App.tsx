@@ -7,13 +7,11 @@ import { ActivityAdmin } from './components/ActivityAdmin';
 import { StudentView } from './components/StudentView';
 import { TeacherMobileView } from './components/TeacherMobileView';
 import { Sidebar } from './components/Sidebar';
-import { Users, Smartphone, ChevronDown, LayoutDashboard, Eye, BookOpen, RotateCcw } from 'lucide-react';
+import { Users, Smartphone, ChevronDown, LayoutDashboard, RotateCcw } from 'lucide-react';
 import { ViewState } from './types';
-import { CAModule } from './components/CAModule';
 
 function App() {
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const sessionId = 'session-persist-1';
   const kernel = useEPSKernel(sessionId);
 
@@ -61,8 +59,8 @@ function App() {
             kernel.selectActivity(act);
             if (currentView !== 'DASHBOARD' && currentView !== 'SESSION_PLANNER') setCurrentView('DASHBOARD');
         }}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        isCollapsed={kernel.isSidebarCollapsed}
+        onToggleCollapse={kernel.toggleSidebar}
         onOpenSettings={() => setCurrentView('SETTINGS')}
       />
 
@@ -129,21 +127,7 @@ function App() {
 
         <main className="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-8">
             <div className="max-w-screen-2xl mx-auto h-full">
-                {currentView === 'DASHBOARD' && (
-                    <div className="h-full rounded-[2.5rem] bg-white border border-white/60 shadow-xl shadow-slate-200/50 overflow-hidden relative">
-                        <CAModule 
-                            activity={kernel.currentActivity}
-                            ca={kernel.currentCA}
-                            activeTab={kernel.activeTab}
-                            onTabChange={kernel.setTab}
-                            currentEngineId={kernel.currentEngineId}
-                            currentApp={kernel.currentApp}
-                            onSaveResult={kernel.saveResult}
-                            results={kernel.getSynthesis()}
-                            sessionKey={kernel.sessionKey}
-                        />
-                    </div>
-                )}
+                {currentView === 'DASHBOARD' && <Dashboard kernel={kernel} />}
                 {currentView === 'CLASSES' && <ClassManager kernel={kernel} />}
                 {currentView === 'SESSION_PLANNER' && <SessionPlanner kernel={kernel} />}
                 {currentView === 'SETTINGS' && <ActivityAdmin kernel={kernel} />}
