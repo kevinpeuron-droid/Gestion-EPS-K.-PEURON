@@ -1,6 +1,6 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType, EngineId, AppDefinition, ActivityResult, ActivityConfig, SharedResource } from '../types';
+import { ActivityCategory, ModuleTab, Student, Session, Observation, Criterion, CAType, EngineId, AppDefinition, ActivityResult, ActivityConfig, SharedResource, SessionContent } from '../types';
 
 // --- CONFIGURATION INITIALE STANDARD ---
 const INITIAL_CA_DEFINITIONS: ActivityCategory[] = [
@@ -126,8 +126,15 @@ export const useEPSKernel = (sessionId?: string) => {
   });
 
   // --- REGISTRES DONNÉES ---
+  // Remplaçant de "observationGrids" implicite
   const [criteriaRegistry, setCriteriaRegistry] = useState<Record<string, Criterion[]>>(() => {
     const saved = localStorage.getItem('eps_criteria_registry');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // Nouveau : Contenu textuel des séances
+  const [sessionContentRegistry, setSessionContentRegistry] = useState<Record<string, SessionContent>>(() => {
+    const saved = localStorage.getItem('eps_session_contents');
     return saved ? JSON.parse(saved) : {};
   });
 
@@ -193,6 +200,10 @@ export const useEPSKernel = (sessionId?: string) => {
     showObservationToStudents: false
   });
 
+  const [currentSessionContent, setCurrentSessionContent] = useState<SessionContent>({
+    objectives: '', warmUp: '', situations: '', assessment: ''
+  });
+
   // --- PERSISTANCE EFFETS ---
   useEffect(() => { localStorage.setItem('eps_ca_definitions', JSON.stringify(caDefinitions)); }, [caDefinitions]);
   useEffect(() => { localStorage.setItem('eps_registered_apps', JSON.stringify(registeredApps)); }, [registeredApps]);
@@ -201,6 +212,7 @@ export const useEPSKernel = (sessionId?: string) => {
   useEffect(() => { localStorage.setItem('eps_activity_results', JSON.stringify(activityResults)); }, [activityResults]);
   useEffect(() => { localStorage.setItem('eps_students', JSON.stringify(students)); }, [students]);
   useEffect(() => { localStorage.setItem('eps_criteria_registry', JSON.stringify(criteriaRegistry)); }, [criteriaRegistry]);
+  useEffect(() => { localStorage.setItem('eps_session_contents', JSON.stringify(sessionContentRegistry)); }, [sessionContentRegistry]);
   useEffect(() => { localStorage.setItem('eps_session_registry', JSON.stringify(sessionRegistry)); }, [sessionRegistry]);
 
 
@@ -230,9 +242,17 @@ export const useEPSKernel = (sessionId?: string) => {
   // --- ACTIONS CRITIQUES ---
 
   const loadActivityContext = useCallback((activity: string, caId: CAType) => {
+      // 1. Charger les critères
       const savedCriteria = criteriaRegistry[activity] || [];
       setCriteria(savedCriteria);
 
+      // 2. Charger le contenu textuel de séance
+      const savedContent = sessionContentRegistry[activity] || {
+        objectives: '', warmUp: '', situations: '', assessment: ''
+      };
+      setCurrentSessionContent(savedContent);
+
+      // 3. Charger les méta-données de session (groupes, options)
       const savedSessionPartial = sessionRegistry[activity] || {};
       
       setCurrentSession(prev => ({
@@ -246,7 +266,7 @@ export const useEPSKernel = (sessionId?: string) => {
           showSessionToStudents: savedSessionPartial.showSessionToStudents || false,
           showObservationToStudents: savedSessionPartial.showObservationToStudents || false
       }));
-  }, [criteriaRegistry, sessionRegistry]);
+  }, [criteriaRegistry, sessionRegistry, sessionContentRegistry]);
 
   useEffect(() => {
      loadActivityContext(currentActivity, currentCA.id);
@@ -278,11 +298,24 @@ export const useEPSKernel = (sessionId?: string) => {
       });
   };
 
-  const updateCriteria = (list: Criterion[]) => {
+  // --- UPDATERS RESTAURÉS ---
+  
+  const updateObservationGrid = (activityId: string, list: Criterion[]) => {
       setCriteria(list);
       setCriteriaRegistry(reg => ({
           ...reg,
-          [currentActivity]: list
+          [activityId]: list
+      }));
+  };
+  
+  // Alias pour compatibilité
+  const updateCriteria = (list: Criterion[]) => updateObservationGrid(currentActivity, list);
+
+  const updateSessionContent = (activityId: string, content: SessionContent) => {
+      setCurrentSessionContent(content);
+      setSessionContentRegistry(reg => ({
+          ...reg,
+          [activityId]: content
       }));
   };
 
@@ -404,6 +437,13 @@ export const useEPSKernel = (sessionId?: string) => {
               return next;
           });
       }
+      if (sessionContentRegistry[oldName]) {
+          setSessionContentRegistry(prev => {
+              const next = { ...prev, [newName]: prev[oldName] };
+              delete next[oldName];
+              return next;
+          });
+      }
       
       if (currentActivity === oldName) selectActivity(newName);
   };
@@ -477,9 +517,10 @@ export const useEPSKernel = (sessionId?: string) => {
     filteredStudents,
     availableGroups,
     currentSession,
+    currentSessionContent, // EXPORTED
     observations,
     criteria,
-    sharedResource, // EXPORTED
+    sharedResource, 
     setTab: setActiveTab,
     selectActivity,
     toggleSidebar,
@@ -490,6 +531,8 @@ export const useEPSKernel = (sessionId?: string) => {
     deleteStudent,
     clearAllStudents,
     updateCriteria,
+    updateObservationGrid, // EXPORTED
+    updateSessionContent, // EXPORTED
     updateActivityConfig,
     applyCAPreset: (id: string) => console.log('preset', id),
     addActivity,
@@ -500,7 +543,7 @@ export const useEPSKernel = (sessionId?: string) => {
     deleteApp,
     saveResult,
     getSynthesis,
-    setSharedResource, // EXPORTED ACTION
+    setSharedResource, 
     caList: caDefinitions,
     addSport: () => {},
     removeSport: () => {}

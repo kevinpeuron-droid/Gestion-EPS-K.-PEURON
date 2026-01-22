@@ -107,6 +107,14 @@ export interface Criterion {
   config: CriterionConfig;
 }
 
+// --- SESSION NATIVE CONTENT ---
+export interface SessionContent {
+  objectives: string;
+  warmUp: string;
+  situations: string;
+  assessment: string;
+}
+
 export interface SessionSequence {
   id: string;
   title: string;
